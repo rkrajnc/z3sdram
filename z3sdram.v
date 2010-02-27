@@ -301,28 +301,6 @@ parameter ZS_WRITE_DATA		= 4'b1000;
 
 reg	[3:0] ZorroState = ZS_IDLE;
 
-wire [31:16] CardBaseAddr;
-//wire [15:0] cfg_wdata;
-wire [7:4] cfg_rdata;
-wire unconfigured, configured, shutup;
-
-
-Autoconfig _Autoconfig (
-	.clk (clk),
-	//.clk (clk133),
-	.ZorroState (ZorroState [3:0]),
-	.nIORST (nIORST), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
-	.autocfg_reg (autocfg_reg [8:0]),
-	.en (cfgspace_match),
-	.rdata (cfg_rdata [7:4]), .wdata (data [15:0]),
-	.ec_Z3_HighByte (CardBaseAddr [31:24]), .ec_BaseAddress (CardBaseAddr [23:16]),
-	
-	.unconfigured (unconfigured), .configured (configured),
-	.shutup (shutup),
-	
-	.DOE (DOE), .READ (READ), .nDS (nDS [3:0])
-	);
-
 
 
 /*
@@ -372,7 +350,6 @@ always @(negedge nFCS) begin
 end
 
 always @(posedge clk) begin
-//always @(posedge clk133) begin
 	
 	if (!nIORST) begin
 		ZorroState <= ZS_IDLE;
@@ -380,7 +357,8 @@ always @(posedge clk) begin
 
 //	if (~nFCS)
 //		ZorroState <= ZS_IDLE;
-//	else
+
+	else
 	
 	  case (ZorroState)
 	
@@ -391,17 +369,14 @@ always @(posedge clk) begin
 			ZorroState <= (~nFCS & match & ~shutup) ? ZS_MATCH_PHASE : ZS_IDLE;
 		end
 
-		ZS_MATCH_PHASE: begin
+		ZS_MATCH_PHASE: begin															// 0001
 			//ZorroState [2:0] <= DOE ? ZS_DATA_PHASE : ZS_MATCH_PHASE;
 			
 			ZorroState <= (DOE & ~busy) ? ZS_DATA_PHASE : ZS_MATCH_PHASE;
 			
-			// !!! for testing purposes only !!!
-			//data [31:0] <= addr [31:0];		
-
 		end
 	
-		ZS_DATA_PHASE: begin					
+		ZS_DATA_PHASE: begin															// 0010
 
 			if (cardspace_match) begin
 				stb_i <= 1'b1;
@@ -495,7 +470,7 @@ wire dboe = ~nSLAVEN & DOE & READ;
 assign nSLAVEN = ~select | nFCS | shutup; // | nCFGINN;
 
 
-assign nDTACK = nFCS | !(ZorroState [2:0] == ZS_DTACK);
+assign nDTACK = nFCS | !(ZorroState == ZS_DTACK);
 
 
 
@@ -520,6 +495,30 @@ assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ?
 									dat_o [31:0] :
 									unconfigured ? {cfg_rdata [7:4], 28'bZ} : 32'bZ;
 */
+
+
+
+wire [31:16] CardBaseAddr;
+//wire [15:0] cfg_wdata;
+wire [7:4] cfg_rdata;
+wire unconfigured, configured, shutup;
+
+
+Autoconfig _Autoconfig (
+	.clk (clk),
+	//.clk (clk133),
+	.ZorroState (ZorroState [3:0]),
+	.nIORST (nIORST), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
+	.autocfg_reg (autocfg_reg [8:0]),
+	.en (cfgspace_match),
+	.rdata (cfg_rdata [7:4]), .wdata (data [15:0]),
+	.ec_Z3_HighByte (CardBaseAddr [31:24]), .ec_BaseAddress (CardBaseAddr [23:16]),
+	
+	.unconfigured (unconfigured), .configured (configured),
+	.shutup (shutup),
+	
+	.DOE (DOE), .READ (READ), .nDS (nDS [3:0])
+	);
 
 
 

@@ -162,8 +162,8 @@ parameter	ER_TYPE = {
 				AC_NEXT_BOART_NOT_RELATED, 
 				
 				//AC_CONFSIZE_64K_32M
-				//AC_CONFSIZE_8M_16M
-				AC_CONFSIZE_128K_64M
+				AC_CONFSIZE_8M_16M
+				//AC_CONFSIZE_128K_64M
 				//AC_CONFSIZE_256K_128M
 				
 				};
@@ -178,23 +178,23 @@ parameter	ER_FLAGS			= {
 									AC_MEMORY_DEVICE,
 									AC_SHUTUP, 
 									
-									AC_NORMAL_SIZE,
-									//AC_EXTENDED_SIZE,
+									//AC_NORMAL_SIZE,
+									AC_EXTENDED_SIZE,
 									
 									1'b1,
 							
-									//AC_SUBSIZE_MATCH_PHYSICAL
+									AC_SUBSIZE_MATCH_PHYSICAL
 									//AC_SUBSIZE_AUTOSIZED
 									//AC_SUBSIZE_64K
-									AC_SUBSIZE_128K
+									//AC_SUBSIZE_128K
 									//AC_SUBSIZE_256K
 									
 									};
 
 parameter	ER_RESERVED03		= 8'b00000000;		// 00c/10c:		Reserved, must be 0
 
-parameter	ER_MANUFACTURER_HI	= 8'h02;			// 010/110:		Manufacturer number, high byte
-parameter	ER_MANUFACTURER_LO	= 8'h02;			// 014/114:							low byte
+parameter	ER_MANUFACTURER_HI	= 8'h13;			// 010/110:		Manufacturer number, high byte
+parameter	ER_MANUFACTURER_LO	= 8'ha6;			// 014/114:							low byte
 													//				02 02 = COMMODORE
 
 
