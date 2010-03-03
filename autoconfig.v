@@ -153,20 +153,20 @@ parameter	AC_SUBSIZE_256K				= 4'b0100;
 
 
 parameter	ER_TYPE = {
-				AC_PIC_TYPE_ZORROIII, 
+									AC_PIC_TYPE_ZORROIII, 
 				
-				//AC_SYSTEM_POOL_NO_LINK,
-				AC_SYSTEM_POOL_LINK ,
+									//AC_SYSTEM_POOL_NO_LINK,
+									AC_SYSTEM_POOL_LINK ,
 				
-				AC_NO_AUTOBOOT_ROM,
-				AC_NEXT_BOART_NOT_RELATED, 
+									AC_NO_AUTOBOOT_ROM,
+									AC_NEXT_BOART_NOT_RELATED, 
 				
-				//AC_CONFSIZE_64K_32M
-				AC_CONFSIZE_8M_16M
-				//AC_CONFSIZE_128K_64M
-				//AC_CONFSIZE_256K_128M
+									//AC_CONFSIZE_64K_32M
+									AC_CONFSIZE_8M_16M
+									//AC_CONFSIZE_128K_64M
+									//AC_CONFSIZE_256K_128M
 				
-				};
+									};
 
 
 parameter	ER_PRODUCT			= 8'h55;			// 004/104:		Product 0x55 (85 decimal)

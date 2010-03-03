@@ -57,8 +57,8 @@ module sdram_controller
 	input	[3:0] dqm_n,
 
    
-   // wishbone bus
-   input [21:0] addr_i,
+   // wishbone bus							
+   input [22:0] addr_i,						// 4M of 32-bit values (2^22 - 1)
    input [31:0] dat_i,
    output [31:0] dat_o,
    input we_i,
@@ -121,7 +121,12 @@ module sdram_controller
               WAIT_200us_CNTR_VALUE = 16'd27000;      // 27000 200us
 
 
-  reg [21:0] address_r;  
+
+
+
+
+
+  reg [22:0] address_r;  
 
   reg [11:0] dram_addr_r;
   reg [1:0]  dram_bank_r;
@@ -412,6 +417,10 @@ module sdram_controller
     if (current_state == READ_PRE_ST ||
         current_state == WRITE_PRE_ST) begin
       ack_o_r = 1'b1;
+
+//	dram_udqm_r <= 1'b1;
+//	dram_ldqm_r <= 1'b1;
+      
     end else if (current_state == WAIT_PRE_ST) begin
       ack_o_r = 1'b0;
     end      
@@ -422,40 +431,14 @@ module sdram_controller
   always@ (posedge clk_i) begin
   //always@ (posedge dram_clk_i) begin
   
-/*
-        if (rst_i) begin
-      dat_o_r = 32'b0;
-      dram_dq_r = 16'b0;
-      oe_r = 1'b0;
-    end else if (current_state == WRITE0_ST) begin    
-      dram_dq_r = dat_i_r [31:16];
-      oe_r = 1'b1;
-    end else if (current_state == WRITE1_ST) begin
-      dram_dq_r = dat_i_r [15:0];
-      oe_r = 1'b1;
-    end else if (current_state == READ4_ST) begin
-      // we should actually be reading this on READ3, but
-      // because of delay the data comes a cycle later...
-      dat_o_r[31:16] = dram_dq;
-      dram_dq_r = 16'bZ;
-      oe_r = 1'b0;
-    end else if (current_state == READ_PRE_ST) begin
-      dat_o_r[15:0] = dram_dq;
-      dram_dq_r = 16'bZ;
-      oe_r = 1'b0;
-    end else begin
-      dram_dq_r = 16'bZ;
-      oe_r = 1'b0;
-    end
-*/   
 	if (rst_i) begin
-      dat_o_r = 32'b0;
-      dram_dq_r = 16'b0;
+      dat_o_r <= 32'b0;
+      dram_dq_r <= 16'b0;
 
 	  dram_udqm_r <= 1'b0;
-  	  dram_ldqm_r <= 1'b0;
+ 	  dram_ldqm_r <= 1'b0;
 
-      oe_r = 1'b0;
+      oe_r <= 1'b0;
 	end
 	else begin
 		case (current_state)
@@ -466,7 +449,7 @@ module sdram_controller
 				dram_udqm_r <= dqm_n [3];
 				dram_ldqm_r <= dqm_n [2];				
 				
-				oe_r = 1'b1;
+				oe_r <= 1'b1;
 			end
 			WRITE1_ST: begin
 				dram_dq_r <= dat_i_r [15:0];								
@@ -475,32 +458,36 @@ module sdram_controller
 				dram_udqm_r <= dqm_n [1];
 				dram_ldqm_r <= dqm_n [0];
 				
-				oe_r = 1'b1;
+				oe_r <= 1'b1;
 			end
 
 			READ4_ST: begin
 				dat_o_r [31:16] <= dram_dq [15:0];
-				dram_dq_r = 16'bZ;
+				dram_dq_r <= 16'bZ;
 
 				dram_udqm_r <= 1'b0;
 				dram_ldqm_r <= 1'b0;
 
 
-				oe_r = 1'b0;
+				oe_r <= 1'b0;
 			end
 			READ_PRE_ST: begin
 				dat_o_r [15:0] <= dram_dq [15:0];
-				dram_dq_r = 16'bZ;
+				dram_dq_r <= 16'bZ;				
 
-				dram_udqm_r <= 1'b1;
-				dram_ldqm_r <= 1'b1;
+			//	dram_udqm_r <= 1'b1;
+			//	dram_ldqm_r <= 1'b1;
 
 				oe_r = 1'b0;
 			end
 			
 			default: begin
-				dram_dq_r = 16'bZ;
-				oe_r = 1'b0;
+				dram_dq_r <= 16'bZ;				
+				oe_r <= 1'b0;
+//				dram_udqm_r <= 1'b1;
+//				dram_ldqm_r <= 1'b1;
+
+
 			end
 		endcase
 	end
@@ -509,18 +496,32 @@ end
 
   
   // address
+  //
+  // Each of the x16’s 33,554,432-bit banks is organized as 4,096 rows by 512 columns by 16 bits.
+  //
+  //
   always@ (posedge clk_i) begin
     if (current_init_state == INIT_MODE_REG) begin
       dram_addr_r <= MODE_REGISTER;
     end else if (current_init_state == INIT_INIT_PRE) begin
       dram_addr_r <= 12'b10000000000;  // precharge all
     end else if (current_state == ACT_ST) begin
-      dram_addr_r <= address_r[19:8];
-      dram_bank_r <= address_r[21:20];
+//      dram_addr_r <= address_r[19:8];
+//      dram_bank_r <= address_r[21:20];
+
+      dram_addr_r <= address_r [20:9];				// 4096 rows
+      dram_bank_r <= address_r [22:21];
+
+
     end else if (current_state == WRITE0_ST || current_state == READ0_ST) begin
       // enter column with bit a10 set to 1 indicating auto precharge:
-      dram_addr_r <= {4'b0100,address_r[7:0]};
-      dram_bank_r <= address_r[21:20];
+//      dram_addr_r <= {4'b0100,address_r[7:0]};
+//     dram_bank_r <= address_r[21:20];
+
+      dram_addr_r <= {3'b010, address_r [8:0]};		// 512 columns
+      dram_bank_r <= address_r [22:21];
+
+
     end else begin
       dram_addr_r <= 12'b0;
       dram_bank_r <= 2'b0;

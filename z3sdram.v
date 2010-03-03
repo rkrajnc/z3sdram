@@ -455,8 +455,11 @@ end
 
 
 
-wire cardspace_match = (addr [31:24] == CardBaseAddr [31:24]);			// our card is being addressed (4xxx.xxxx)
+//wire cardspace_match = (addr [31:24] == CardBaseAddr [31:24]);			// our card is being addressed (4xxx.xxxx)
+wire cardspace_match = (addr [31:25] == CardBaseAddr [31:25]);			// our card is being addressed (4xxx.xxxx)
+
 wire cfgspace_match = (addr [31:16] == 16'hFF00);						// Autoconfig configuration space is being addressed
+
 wire match = cardspace_match | cfgspace_match;
 
 wire hit = ~nSLAVEN & ~nFCS;
@@ -535,36 +538,6 @@ Autoconfig _Autoconfig (
 
 leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured), .shutup (shutup), .red_led (~red_led), .LED (LED [2:0]));
 
-/*
-   input clk_i,
-   input dram_clk_i,
-   input rst_i,
-   input dll_locked,
-   // all ddr signals
-   output [11:0] dram_addr,
-   output [1:0] dram_bank,
-   output dram_cas_n,
-   output dram_cke,
-   output dram_clk,
-   output dram_cs_n,
-   inout [15:0] dram_dq,
-   output dram_ldqm,
-   output dram_udqm,
-   output dram_ras_n,
-   output dram_we_n,
-   // wishbone bus
-   input [21:0] addr_i,
-   input [31:0] dat_i,
-   output [31:0] dat_o,
-   input we_i,
-   output ack_o,
-   input stb_i,
-   input cyc_i
-   ,
-   output refresh_active
-*/
-// BA, CKE, CLK, DQ, DQMH, DQML, SA, nCAS, nCS0, nRAS, nWE
-
 sdram_controller sdram_controller_i (
 	.clk_i (clk133), 	
 	.dram_clk_i (clk133_3),
@@ -583,12 +556,13 @@ sdram_controller sdram_controller_i (
 	.dram_ras_n (nRAS),
 	.dram_we_n (nWE),
 
-	 .addr_i (addr [21:0]),
-	//.addr_i (32'b0),
+//	 .addr_i (addr [23:0]),
+
+	 .addr_i (addr [23:1]),
+
 //	.dat_i (data [31:0]),
 	.dat_i ({AD [31:24], SD [7:0], AD [23:8]}),
 	.dat_o (dat_o [31:0]),
-//	.dat_o ({dat_o [31:24], dat_o [15:0], dat_o [23:16]}),
 	.dqm_n (nDS [3:0]),
 
 	.ack_o (ack_o),
@@ -614,23 +588,6 @@ wire red_led;
 wire busy;
 
 
-/*
-
-sdram_rw sdram_rw_i (
-	.clk_i (clk),
-	.rst_i (~nIORST),
-//	.addr_i (addr_i [21:0]),
-//	.dat_i (dat_i [31:0]),
-//	.dat_o (dat_o [31:0]),
-//	.we_i (we_i),
-//	.ack_o (ack_o),
-//	.stb_i (stb_i),
-//	.cyc_i (cyc_i),
-//	.red_led (red_led)
-);
-
-*/
-
 wire clk133, clk133_3;
 
 `ifdef SIMULATION
@@ -638,7 +595,7 @@ wire clk133, clk133_3;
 `else
 
 	// SFL
-//	sfl sfl_instance (1'b0);
+	sfl sfl_instance (1'b0);
 
 	// PLL
 	pll pll_instance (.inclk0 (CLK0), .c0 (clk), .c1 (clk133), .c2 (clk133_3));
