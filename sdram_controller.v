@@ -426,6 +426,57 @@ module sdram_controller
     end      
   end
 
+
+// data masking
+always @ (posedge clk_i) begin
+	if (rst_i) begin
+	  dram_udqm_r <= 1'b1;
+ 	  dram_ldqm_r <= 1'b1;		
+	end
+	else begin
+		case (current_state)
+			WRITE0_ST: begin
+				dram_udqm_r <= dqm_n [3];
+				dram_ldqm_r <= dqm_n [2];				
+			end
+			WRITE1_ST: begin
+				dram_udqm_r <= dqm_n [1];
+				dram_ldqm_r <= dqm_n [0];
+			end
+
+			READ1_ST: begin
+				dram_udqm_r <= 1'b0;
+				dram_ldqm_r <= 1'b0;
+			end
+
+			READ2_ST: begin
+				dram_udqm_r <= 1'b0;
+				dram_ldqm_r <= 1'b0;
+			end
+
+			READ3_ST: begin
+				dram_udqm_r <= 1'b0;
+				dram_ldqm_r <= 1'b0;
+			end
+
+			READ4_ST: begin
+				dram_udqm_r <= 1'b0;
+				dram_ldqm_r <= 1'b0;
+			end
+
+			READ_PRE_ST: begin
+				dram_udqm_r <= 1'b0;
+				dram_ldqm_r <= 1'b0;
+			end	
+					
+			default: begin
+				dram_udqm_r <= 1'b1;
+				dram_ldqm_r <= 1'b1;
+			end
+		endcase
+	end
+end
+
   
   // data
   always@ (posedge clk_i) begin
@@ -435,50 +486,34 @@ module sdram_controller
       dat_o_r <= 32'b0;
       dram_dq_r <= 16'b0;
 
-	  dram_udqm_r <= 1'b0;
- 	  dram_ldqm_r <= 1'b0;
-
       oe_r <= 1'b0;
 	end
 	else begin
 		case (current_state)
 			WRITE0_ST: begin
 				dram_dq_r <= dat_i_r [31:16];				
-				//dram_dq_r <= 16'hFEED;
-				
-				dram_udqm_r <= dqm_n [3];
-				dram_ldqm_r <= dqm_n [2];				
-				
+				//dram_dq_r <= 16'hFEED;							
 				oe_r <= 1'b1;
 			end
 			WRITE1_ST: begin
 				dram_dq_r <= dat_i_r [15:0];								
 				//dram_dq_r <= 16'hBEEF;
-				
-				dram_udqm_r <= dqm_n [1];
-				dram_ldqm_r <= dqm_n [0];
-				
 				oe_r <= 1'b1;
 			end
 
 			READ4_ST: begin
-				dat_o_r [31:16] <= dram_dq [15:0];
+				dat_o_r [31:16] <= dram_dq [15:0];				
 				dram_dq_r <= 16'bZ;
-
-				dram_udqm_r <= 1'b0;
-				dram_ldqm_r <= 1'b0;
-
-
 				oe_r <= 1'b0;
 			end
 			READ_PRE_ST: begin
-				dat_o_r [15:0] <= dram_dq [15:0];
+				dat_o_r [15:0] <= dram_dq [15:0];				
 				dram_dq_r <= 16'bZ;				
 
 			//	dram_udqm_r <= 1'b1;
 			//	dram_ldqm_r <= 1'b1;
 
-				oe_r = 1'b0;
+				oe_r <= 1'b0;
 			end
 			
 			default: begin

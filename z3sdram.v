@@ -197,7 +197,7 @@ Address Phase	Data Phase
 	AD8				D0
 	AD9				D1
 	AD10			D2
-	AD11			D3
+	AD11			D3			/DS0
 	AD12			D4
 	AD13			D5
 	AD14			D6
@@ -225,7 +225,7 @@ SD7				D23
 	AD25			D25
 	AD26			D26
 	AD27			D27
-	AD28			D28
+	AD28			D28			/DS3
 	AD29			D29
 	AD30			D30
 	AD31			D31
@@ -340,7 +340,20 @@ falling edge of the logically ORed data strobes; the bus master doesn’t sample /
 after the data strobes are asserted, so a slave can actually assert /DTACK any time after /FCS.
 */
 
+// Resample some input signals
+reg nFCS_r;			// = 1'b1;
+reg nIORST_r;		// = 1'b1;
+reg DOE_r;			// = 1'b0;
+reg [3:0] nDS_r;	// = 4'b1111;
 
+always @(posedge clk) begin
+	nIORST_r <= nIORST;
+	nFCS_r <= nFCS;
+	DOE_r <= DOE;
+	nDS_r [3:0] <= nDS [3:0];
+end
+
+/*
 // Lock address always in the beginning of FCS
 //
 always @(negedge nFCS) begin
@@ -348,10 +361,21 @@ always @(negedge nFCS) begin
 	autocfg_reg [8:0] <= {AD [8], A [7:2], 2'b0};
 
 end
+*/
+
+//always @(posedge clk) begin
+always @(negedge nFCS_r) begin
+	//if (nFCS_r & ~nFCS) begin
+		addr [31:0] <= {AD [31:8], A [7:2], 2'b0};
+		autocfg_reg [8:0] <= {AD [8], A [7:2], 2'b0};
+	//end
+end
+
 
 always @(posedge clk) begin
-	
-	if (!nIORST) begin
+
+//	if (~nIORST | nFCS) begin	
+	if (~nIORST_r | nFCS_r) begin
 		ZorroState <= ZS_IDLE;
 	end
 
@@ -366,13 +390,14 @@ always @(posedge clk) begin
 //			stb_i <= 1'b0;
 //			cyc_i <= 1'b0;
 		
-			ZorroState <= (~nFCS & match & ~shutup) ? ZS_MATCH_PHASE : ZS_IDLE;
+			//ZorroState <= (~nFCS & match & ~shutup) ? ZS_MATCH_PHASE : ZS_IDLE;
+			ZorroState <= (~nFCS_r & match & ~shutup) ? ZS_MATCH_PHASE : ZS_IDLE;
 		end
 
-		ZS_MATCH_PHASE: begin															// 0001
-			//ZorroState [2:0] <= DOE ? ZS_DATA_PHASE : ZS_MATCH_PHASE;
+		ZS_MATCH_PHASE: begin															// 0001						
 			
-			ZorroState <= (DOE & ~busy) ? ZS_DATA_PHASE : ZS_MATCH_PHASE;
+			//ZorroState <= (DOE & ~busy) ? ZS_DATA_PHASE : ZS_MATCH_PHASE;
+			ZorroState <= (DOE_r & ~busy) ? ZS_DATA_PHASE : ZS_MATCH_PHASE;
 			
 		end
 	
@@ -407,7 +432,8 @@ always @(posedge clk) begin
 			else begin
 				// wait for at least nDS [3:0] to be asserted
 				// then latch data and go to ZS_DTACK
-				if (!(nDS [3:0] == 4'b1111)) begin
+				//if (!(nDS [3:0] == 4'b1111)) begin
+				if (!(nDS_r [3:0] == 4'b1111)) begin
 					data [31:0] <= {AD [31:24], SD [7:0], AD [23:8]};		// for write to Autoconfig regs
 					ZorroState <= ZS_WRITE_DATA;
 				end
@@ -433,7 +459,8 @@ always @(posedge clk) begin
 				cyc_i <= 1'b0;
 
 			
-				ZorroState <= (nFCS) ? ZS_IDLE : ZS_DTACK;
+				//ZorroState <= (nFCS) ? ZS_IDLE : ZS_DTACK;
+				ZorroState <= (nFCS_r) ? ZS_IDLE : ZS_DTACK;
 		end
 			
 	//	default:
@@ -462,18 +489,22 @@ wire cfgspace_match = (addr [31:16] == 16'hFF00);						// Autoconfig configurati
 
 wire match = cardspace_match | cfgspace_match;
 
-wire hit = ~nSLAVEN & ~nFCS;
+//wire hit = ~nSLAVEN & ~nFCS;
 //wire dboe = hit & DOE;	// & !BERR
 //wire dbdir = ~nSLAVEN & READ;
 
 wire select = match & (FC[0] ^ FC [1]);
 
-wire dboe = ~nSLAVEN & DOE & READ;
+//wire dboe = ~nSLAVEN & DOE & READ;
+wire dboe = ~nSLAVEN & DOE_r & READ;
 
-assign nSLAVEN = ~select | nFCS | shutup; // | nCFGINN;
+
+//assign nSLAVEN = ~select | nFCS | shutup; // | nCFGINN;
+assign nSLAVEN = ~select | nFCS_r | shutup; // | nCFGINN;
 
 
-assign nDTACK = nFCS | !(ZorroState == ZS_DTACK);
+//assign nDTACK = nFCS | !(ZorroState == ZS_DTACK);
+assign nDTACK = nFCS_r | !(ZorroState == ZS_DTACK);
 
 
 
@@ -511,7 +542,7 @@ Autoconfig _Autoconfig (
 	.clk (clk),
 	//.clk (clk133),
 	.ZorroState (ZorroState [3:0]),
-	.nIORST (nIORST), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
+	.nIORST (nIORST_r), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
 	.autocfg_reg (autocfg_reg [8:0]),
 	.en (cfgspace_match),
 	.rdata (cfg_rdata [7:4]), .wdata (data [15:0]),
@@ -520,7 +551,7 @@ Autoconfig _Autoconfig (
 	.unconfigured (unconfigured), .configured (configured),
 	.shutup (shutup),
 	
-	.DOE (DOE), .READ (READ), .nDS (nDS [3:0])
+	.DOE (DOE_r), .READ (READ), .nDS (nDS_r [3:0])
 	);
 
 
@@ -541,7 +572,7 @@ leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured),
 sdram_controller sdram_controller_i (
 	.clk_i (clk133), 	
 	.dram_clk_i (clk133_3),
-	.rst_i (~nIORST), 
+	.rst_i (~nIORST_r), 
 	.dll_locked (1'b1),
 	
 	.dram_addr (SA [11:0]),
@@ -563,7 +594,8 @@ sdram_controller sdram_controller_i (
 //	.dat_i (data [31:0]),
 	.dat_i ({AD [31:24], SD [7:0], AD [23:8]}),
 	.dat_o (dat_o [31:0]),
-	.dqm_n (nDS [3:0]),
+	
+	.dqm_n (nDS_r [3:0]),	
 
 	.ack_o (ack_o),
 	.stb_i (stb_i),
