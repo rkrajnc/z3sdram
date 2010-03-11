@@ -84,9 +84,9 @@ input [8:0] autocfg_reg;
 input [15:0] wdata;
 output reg [7:4] rdata;
 
-output unconfigured = (Status == UNCONFIGURED);
-output configured = (Status == CONFIGURED);
-output shutup = (Status == SHUTUP);
+output unconfigured = (Status == PIC_UNCONFIGURED);
+output configured = (Status == PIC_CONFIGURED);
+output shutup = (Status == PIC_SHUTUP);
 
 // AUTOCONFIG registers
 
@@ -99,10 +99,10 @@ output reg [1:0] Status;
 
 
 
-parameter	UNCONFIGURED 		= 2'b00;
-parameter	IN_PROGRESS			= 2'b01;
-parameter	CONFIGURED			= 2'b10;
-parameter	SHUTUP				= 2'b11;
+parameter	PIC_UNCONFIGURED 		= 2'b00;
+parameter	PIC_IN_PROGRESS			= 2'b01;
+parameter	PIC_CONFIGURED			= 2'b10;
+parameter	PIC_SHUTUP				= 2'b11;
 
 //
 // Bit values for AUTOCONFIG registers
@@ -223,7 +223,7 @@ parameter ZS_WRITE_DATA		= 4'b1000;
 always @(posedge clk) begin
 
 	if (~nIORST) begin
-		Status <= UNCONFIGURED;
+		Status <= PIC_UNCONFIGURED;
 		//Status <= SHUTUP;
 		ec_BaseAddress [7:0] <= 8'h77;
 		ec_Z3_HighByte [7:0] <= 8'h77;
@@ -233,10 +233,10 @@ always @(posedge clk) begin
 	
 	case (Status)		
 
-		SHUTUP: begin
+		PIC_SHUTUP: begin
 		end
 
-		CONFIGURED: begin
+		PIC_CONFIGURED: begin
 		end
 		
 		default: begin
@@ -274,12 +274,12 @@ always @(posedge clk) begin
 						//ec_BaseAddress <= nDS [1] ? ec_BaseAddress : wdata [15:8]; - somehow word access is nDS [3] == 0, nDS [2] == 0
 						ec_BaseAddress <= nDS [2] ? ec_BaseAddress : wdata [7:0];
 						//ec_BaseAddress <= wdata [15:8];
-						Status <= CONFIGURED;
+						Status <= PIC_CONFIGURED;
 					end
 			
 					9'hX48: ec_BaseAddress <= wdata [7:0];					// 48, byte access, address bits A23..A16
 
-					9'hX4c: Status <= SHUTUP;								// 4c, shut up register
+					9'hX4c: Status <= PIC_SHUTUP;								// 4c, shut up register
 				endcase
 			end
 		end				
@@ -291,7 +291,7 @@ always @(posedge clk) begin
 end
 
 	
-assign nCFGOUTN = !(nCFGINN & ((Status == CONFIGURED) | (Status == SHUTUP)));
+assign nCFGOUTN = !(nCFGINN & ((Status == PIC_CONFIGURED) | (Status == PIC_SHUTUP)));
 
 	
 endmodule
