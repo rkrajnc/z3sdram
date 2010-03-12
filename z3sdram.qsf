@@ -708,8 +708,7 @@ set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[191
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[192] -to nIORST -section_id auto_signaltap_0
 set_global_assignment -name FMAX_REQUIREMENT "166 MHz"
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to nMTACK
-set_global_assignment -name OPTIMIZE_HOLD_TIMING "IO PATHS AND MINIMUM TPD PATHS"
-set_global_assignment -name FITTER_EFFORT "AUTO FIT"
+set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[193] -to nMTCR -section_id auto_signaltap_0
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[194] -to nRAS -section_id auto_signaltap_0
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_trigger_in[195] -to nWE -section_id auto_signaltap_0
@@ -1169,4 +1168,13 @@ set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_INVERSION_MASK=00
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_INVERSION_MASK_LENGTH=1279" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_LOWORD=64670" -section_id auto_signaltap_0
 set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_HIWORD=20093" -section_id auto_signaltap_0
+set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER OFF
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to FC[1]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to FC[0]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to nDS
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to READ
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to DOE
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to nFCS
+set_global_assignment -name IGNORE_CLOCK_SETTINGS ON
+set_global_assignment -name ENABLE_CLOCK_LATENCY ON
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

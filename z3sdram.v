@@ -460,7 +460,7 @@ end
 
 
 
-wire cardspace_match = (addr [31:25] == CardBaseAddr [31:25]);			// our card is being addressed (4xxx.xxxx)
+wire cardspace_match = (addr [31:26] == CardBaseAddr [31:26]);			// our card is being addressed (4xxx.xxxx)
 
 wire cfgspace_match = (addr [31:16] == 16'hFF00);						// Autoconfig configuration space is being addressed
 
@@ -528,14 +528,6 @@ Autoconfig _Autoconfig (
 
 // assign LED[2] = cfgspace_hit;
 
-// отладка
-
-//reg [32:0] counter;
-
-//always @(posedge clk)
-//	counter <= counter + 1'b1;
-	
-//assign LED [2:0] = counter [26:24];
 
 leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured), .shutup (shutup), .red_led (~red_led), .LED (LED [2:0]));
 
@@ -545,7 +537,7 @@ sdram_controller sdram_controller_i (
 	.rst_i (~nIORST_r), 
 	.dll_locked (1'b1),
 	
-	.dram_addr (SA [11:0]),
+	.dram_addr (SA [12:0]),
 	.dram_bank (BA [1:0]),
 	.dram_cas_n (nCAS),
 	.dram_cke (CKE),
@@ -557,11 +549,9 @@ sdram_controller sdram_controller_i (
 	.dram_ras_n (nRAS),
 	.dram_we_n (nWE),
 
-//	 .addr_i (addr [23:0]),
+//	 .addr_i (addr [23:1]),
+	 .addr_i (addr [25:1]),
 
-	 .addr_i (addr [23:1]),
-
-//	.dat_i (data [31:0]),
 	.dat_i ({AD [31:24], SD [7:0], AD [23:8]}),
 	.dat_o (dat_o [31:0]),
 	

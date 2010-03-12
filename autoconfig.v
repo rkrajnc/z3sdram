@@ -162,14 +162,14 @@ parameter	ER_TYPE = {
 									AC_NEXT_BOART_NOT_RELATED, 
 				
 									//AC_CONFSIZE_64K_32M
-									AC_CONFSIZE_8M_16M
-									//AC_CONFSIZE_128K_64M
+									//AC_CONFSIZE_8M_16M
+									AC_CONFSIZE_128K_64M
 									//AC_CONFSIZE_256K_128M
 				
 									};
 
 
-parameter	ER_PRODUCT			= 8'h55;			// 004/104:		Product 0x55 (85 decimal)
+parameter	ER_PRODUCT			= 8'h17;			// 004/104:		Product 0x17 (23 decimal)
 
 //parameter	ER_FLAGS			= 8'b10110001;		// 008/108:		Zorro III memory card, can be shut up, ext.size, , autosized by OS
 //parameter	ER_FLAGS			= 8'b00010000;		// 008/108:		I/O card, can be shut, no ext, logical size match physical size

@@ -42,7 +42,7 @@ module sdram_controller
    input dll_locked,
    
    // all ddr signals
-   output [11:0] dram_addr,
+   output [12:0] dram_addr,
    output [1:0] dram_bank,
    output dram_cas_n,
    output dram_cke,
@@ -58,7 +58,9 @@ module sdram_controller
 
    
    // wishbone bus							
-   input [22:0] addr_i,						// 4M of 32-bit values (2^22 - 1)
+//   input [22:0] addr_i,						// 4M of 32-bit values (2^22 - 1)
+   input [24:0] addr_i,						// 16M of 32-bit values (2^24 - 1)
+
    input [31:0] dat_i,
    output [31:0] dat_o,
    input we_i,
@@ -68,7 +70,7 @@ module sdram_controller
    
    ,
    
-   output refresh_active,
+//   output refresh_active,
    
    output busy
    
@@ -109,26 +111,50 @@ module sdram_controller
               WAIT_PRE_ST     = 4'b1111;
 
   
+
+  /*
   // @ 133.333 MHz period is 7.5 nano cycle
   
   parameter TRC_CNTR_VALUE          = 4'd9,           // 9 cycles, == time to wait after refresh, 67.5ns 
                                                       // also time to wait between two ACT commands
-              RFSH_INT_CNTR_VALUE   = 24'd2000,       // need 4096 refreshes for every 64_000_000 ns
+            
+              RFSH_INT_CNTR_VALUE   = 24'd1000 
+              // 24'd2000 ,       
+														// need 4096 refreshes for every 64_000_000 ns
                                                       // so the # of cycles between refreshes is
                                                       // 64000000 / 4096 / 7.5 = 2083
+                                                      // 1043 for 8192 refreshes
+            
               TRCD_CNTR_VALUE       = 3'd3,           // ras to cas delay 20ns
                                                       // will also be used for tRP and tRSC
+            
               WAIT_200us_CNTR_VALUE = 16'd27000;      // 27000 200us
 
+*/
+
+	// @ 100 MHz period is 10ns
+
+  parameter TRC_CNTR_VALUE          = 4'd7,           // 7 cycles, == time to wait after refresh, 67.5ns 
+                                                      // also time to wait between two ACT commands
+            
+              RFSH_INT_CNTR_VALUE   = 24'd700,
+														// need 4096 refreshes for every 64_000_000 ns
+                                                      // so the # of cycles between refreshes is
+                                                      // 64000000 / 4096 / 7.5 = 2083
+                                                      // 1043 for 8192 refreshes
+            
+              TRCD_CNTR_VALUE       = 3'd2,           // ras to cas delay 20ns
+                                                      // will also be used for tRP and tRSC
+            
+              WAIT_200us_CNTR_VALUE = 16'd20000;      // 20000 200us
 
 
 
 
 
+  reg [24:0] address_r;
 
-  reg [22:0] address_r;  
-
-  reg [11:0] dram_addr_r;
+  reg [12:0] dram_addr_r;
   reg [1:0]  dram_bank_r;
   reg [15:0] dram_dq_r;  
   reg        dram_cas_n_r;
@@ -185,7 +211,7 @@ module sdram_controller
 	assign dram_udqm = dram_udqm_r;
 
   
-	assign refresh_active = do_refresh;
+//	assign refresh_active = do_refresh;
 
 
 	assign busy = (current_state != IDLE_ST);
@@ -491,13 +517,11 @@ end
 	else begin
 		case (current_state)
 			WRITE0_ST: begin
-				dram_dq_r <= dat_i_r [31:16];				
-				//dram_dq_r <= 16'hFEED;							
+				dram_dq_r <= dat_i_r [31:16];								
 				oe_r <= 1'b1;
 			end
 			WRITE1_ST: begin
-				dram_dq_r <= dat_i_r [15:0];								
-				//dram_dq_r <= 16'hBEEF;
+				dram_dq_r <= dat_i_r [15:0];				
 				oe_r <= 1'b1;
 			end
 
@@ -509,20 +533,12 @@ end
 			READ_PRE_ST: begin
 				dat_o_r [15:0] <= dram_dq [15:0];				
 				dram_dq_r <= 16'bZ;				
-
-			//	dram_udqm_r <= 1'b1;
-			//	dram_ldqm_r <= 1'b1;
-
 				oe_r <= 1'b0;
 			end
 			
 			default: begin
 				dram_dq_r <= 16'bZ;				
 				oe_r <= 1'b0;
-//				dram_udqm_r <= 1'b1;
-//				dram_ldqm_r <= 1'b1;
-
-
 			end
 		endcase
 	end
@@ -532,20 +548,28 @@ end
   
   // address
   //
+  // 16MBytes (8Mx16)
   // Each of the x16’s 33,554,432-bit banks is organized as 4,096 rows by 512 columns by 16 bits.
   //
+  // 64MBytes (32Mx16)
+  // Each of the x16’s 134,217,728-bit banks is organized as 8,192 rows by 1,024 columns by 16 bits.
   //
   always@ (posedge clk_i) begin
     if (current_init_state == INIT_MODE_REG) begin
       dram_addr_r <= MODE_REGISTER;
     end else if (current_init_state == INIT_INIT_PRE) begin
-      dram_addr_r <= 12'b10000000000;  // precharge all
+      dram_addr_r <= 13'b0010000000000;  // precharge all
     end else if (current_state == ACT_ST) begin
 //      dram_addr_r <= address_r[19:8];
 //      dram_bank_r <= address_r[21:20];
 
-      dram_addr_r <= address_r [20:9];				// 4096 rows
-      dram_bank_r <= address_r [22:21];
+		// 16 MBytes
+		//dram_addr_r <= address_r [20:9];				// 4096 rows
+		//dram_bank_r <= address_r [22:21];
+
+		// 64 MBytes
+		dram_addr_r <= address_r [22:10];				// 8192 rows
+		dram_bank_r <= address_r [24:23];
 
 
     end else if (current_state == WRITE0_ST || current_state == READ0_ST) begin
@@ -553,12 +577,16 @@ end
 //      dram_addr_r <= {4'b0100,address_r[7:0]};
 //     dram_bank_r <= address_r[21:20];
 
-      dram_addr_r <= {3'b010, address_r [8:0]};		// 512 columns
-      dram_bank_r <= address_r [22:21];
+		// 16 MBytes
+		//dram_addr_r <= {3'b010, address_r [8:0]};			// 512 columns
+		//dram_bank_r <= address_r [22:21];
 
+		// 64 MBytes
+		dram_addr_r <= {3'b001, address_r [9:0]};		// 1024 columns
+		dram_bank_r <= address_r [24:23];
 
     end else begin
-      dram_addr_r <= 12'b0;
+      dram_addr_r <= 13'b0;
       dram_bank_r <= 2'b0;
     end
   end
