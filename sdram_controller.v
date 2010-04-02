@@ -66,9 +66,9 @@ module sdram_controller
    input we_i,
    output ack_o,
    input stb_i,
-   input cyc_i
+//   input cyc_i
    
-   ,
+ 
    
 //   output refresh_active,
    
@@ -112,13 +112,13 @@ module sdram_controller
 
   
 
-  /*
-  // @ 133.333 MHz period is 7.5 nano cycle
   
+  // @ 133.333 MHz period is 7.5 nano cycle
+  /*
   parameter TRC_CNTR_VALUE          = 4'd9,           // 9 cycles, == time to wait after refresh, 67.5ns 
                                                       // also time to wait between two ACT commands
             
-              RFSH_INT_CNTR_VALUE   = 24'd1000 
+              RFSH_INT_CNTR_VALUE   = 24'd2000,
               // 24'd2000 ,       
 														// need 4096 refreshes for every 64_000_000 ns
                                                       // so the # of cycles between refreshes is
@@ -132,27 +132,68 @@ module sdram_controller
 
 */
 
-	// @ 100 MHz period is 10ns
-
-  parameter TRC_CNTR_VALUE          = 4'd7,           // 7 cycles, == time to wait after refresh, 67.5ns 
+// @ 100 MHz period is 10ns
+/*
+  parameter TRC_CNTR_VALUE          = 4'd7,           // 7 cycles, == time to wait after refresh, 70ns 
                                                       // also time to wait between two ACT commands
             
-              RFSH_INT_CNTR_VALUE   = 24'd700,
+              RFSH_INT_CNTR_VALUE   = 24'd1000,
 														// need 4096 refreshes for every 64_000_000 ns
                                                       // so the # of cycles between refreshes is
                                                       // 64000000 / 4096 / 7.5 = 2083
-                                                      // 1043 for 8192 refreshes
+                                                      //
+                                                      // 64000000 / 8192 / 10 = 1043 for 8192 refreshes
             
               TRCD_CNTR_VALUE       = 3'd2,           // ras to cas delay 20ns
                                                       // will also be used for tRP and tRSC
             
               WAIT_200us_CNTR_VALUE = 16'd20000;      // 20000 200us
 
+*/
 
+
+	// @ 66 MHz period is 15ns
+
+  parameter TRC_CNTR_VALUE          = 4'd5,           // 7 cycles, == time to wait after refresh, 70ns 
+                                                      // also time to wait between two ACT commands
+            
+              RFSH_INT_CNTR_VALUE   = 24'd500,
+														// need 8192 refreshes for every 64_000_000 ns
+														// so the # of cycles between refreshes is                                                      
+														//
+														// 64000000 / 8192 / 15 = 520 for 8192 refreshes
+            
+              TRCD_CNTR_VALUE       = 3'd2,           // ras to cas delay 20ns
+                                                      // will also be used for tRP and tRSC
+            
+              WAIT_200us_CNTR_VALUE = 16'd7000;      // 7000 200us
+
+
+
+	// @ 50 MHz period is 15ns
+/*
+  parameter TRC_CNTR_VALUE          = 4'd4,           // 3 cycles, == time to wait after refresh, 80ns 
+                                                      // also time to wait between two ACT commands
+            
+              RFSH_INT_CNTR_VALUE   = 24'd390,
+														// need 8192 refreshes for every 64_000_000 ns
+														// so the # of cycles between refreshes is                                                      
+														//
+														// 64000000 / 8192 / 20 = 390 for 8192 refreshes
+            
+              TRCD_CNTR_VALUE       = 3'd1,           // ras to cas delay 20ns
+                                                      // will also be used for tRP and tRSC
+            
+              WAIT_200us_CNTR_VALUE = 16'd1000;      // 7000 200us
+
+*/
+	
 
 
 
   reg [24:0] address_r;
+  reg [3:0] dqm_n_r;
+
 
   reg [12:0] dram_addr_r;
   reg [1:0]  dram_bank_r;
@@ -238,10 +279,12 @@ module sdram_controller
   
         dat_i_r <= dat_i;
         address_r <= addr_i;
+ 		dqm_n_r <= dqm_n;								
   
     if (stb_i_r && current_state == ACT_ST) begin
       stb_i_r <= 1'b0;
-    end else if (stb_i && cyc_i) begin
+    //end else if (stb_i && cyc_i) begin
+    end else if (stb_i) begin
 //      address_r <= addr_i;
 //      dat_i_r <= dat_i;
       we_i_r <= we_i;
@@ -261,7 +304,7 @@ module sdram_controller
   end
 
 
-  // control the interval between refreshes:
+  // control the interval between refreshes
   always@ (posedge clk_i) begin
     if (rst_i) begin
       rfsh_int_cntr <= 1'b0;   // immediately initiate new refresh on reset
@@ -382,10 +425,15 @@ module sdram_controller
     case (current_state)
       IDLE_ST:
         if (!init_done)               next_state = IDLE_ST;
+
+
         else if (do_refresh)          next_state = REFRESH_ST;
         //else if (stb_i_r)             next_state = ACT_ST;
         else if (stb_i)		           next_state = ACT_ST;
         else                          next_state = IDLE_ST;
+
+
+
       
       REFRESH_ST:                     next_state = REFRESH_WAIT_ST;
 
@@ -429,6 +477,7 @@ module sdram_controller
         // if the next command was not another row activate in the same bank
         // we could wait tRCD only; for simplicity but at the detriment of
         // efficiency we always wait tRC
+
         if (!trc_cntr)                next_state = IDLE_ST;
         else                          next_state = WAIT_PRE_ST;
 
@@ -444,12 +493,10 @@ module sdram_controller
         current_state == WRITE_PRE_ST) begin
       ack_o_r = 1'b1;
 
-//	dram_udqm_r <= 1'b1;
-//	dram_ldqm_r <= 1'b1;
-      
-    end else if (current_state == WAIT_PRE_ST) begin
+    //end else if (current_state == WAIT_PRE_ST) begin
+    end else
       ack_o_r = 1'b0;
-    end      
+    //end 
   end
 
 
@@ -462,12 +509,12 @@ always @ (posedge clk_i) begin
 	else begin
 		case (current_state)
 			WRITE0_ST: begin
-				dram_udqm_r <= dqm_n [3];
-				dram_ldqm_r <= dqm_n [2];				
+				dram_udqm_r <= dqm_n_r [3];		// dqm_n [3];
+				dram_ldqm_r <= dqm_n_r [2];		// dqm_n [2];				
 			end
 			WRITE1_ST: begin
-				dram_udqm_r <= dqm_n [1];
-				dram_ldqm_r <= dqm_n [0];
+				dram_udqm_r <= dqm_n_r [1];		// dqm_n [1];
+				dram_ldqm_r <= dqm_n_r [0];		// dqm_n [0];
 			end
 
 			READ1_ST: begin
@@ -553,6 +600,17 @@ end
   //
   // 64MBytes (32Mx16)
   // Each of the x16’s 134,217,728-bit banks is organized as 8,192 rows by 1,024 columns by 16 bits.
+  //
+  //
+  //
+  //
+	// Address inputs: A0–A12 are sampled during the ACTIVE command (row-address
+	// A0–A12) and READ/WRITE command (A0–A9 [x16]; with A10 defining auto precharge) to select one location
+	// out of the memory array in the respective bank. A10 is sampled during a
+	// PRECHARGE command to determine whether all banks are to be precharged (A10
+	// [HIGH]) or bank selected by (A10 [LOW]). The address inputs also provide the opcode
+	// during a LOAD MODE REGISTER command.
+  //
   //
   always@ (posedge clk_i) begin
     if (current_init_state == INIT_MODE_REG) begin

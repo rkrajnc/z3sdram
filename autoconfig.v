@@ -54,13 +54,13 @@ module Autoconfig (
 	nIORST,
 	nCFGINN,
 	nCFGOUTN,
-	DOE,
+		
 	READ,
 	nDS,
 	
 	en,
 	
-	autocfg_reg,
+	autocfg_reg,	// AD [8], A [7:2]
 	rdata, wdata,
 
 	
@@ -68,7 +68,7 @@ module Autoconfig (
 	
 	unconfigured, configured, shutup,
 	
-	Status
+	pool_link
 );
 
 input clk;
@@ -76,17 +76,21 @@ input [3:0] ZorroState;
 input nIORST;
 input nCFGINN;
 output nCFGOUTN;
-input DOE, READ;
+input READ;
 input [3:0] nDS;
 input en;
 
-input [8:0] autocfg_reg;
+//input [8:0] autocfg_reg;
+input [6:0] autocfg_reg;
 input [15:0] wdata;
 output reg [7:4] rdata;
 
 output unconfigured = (Status == PIC_UNCONFIGURED);
 output configured = (Status == PIC_CONFIGURED);
 output shutup = (Status == PIC_SHUTUP);
+
+input pool_link;
+
 
 // AUTOCONFIG registers
 
@@ -95,7 +99,7 @@ output reg [7:0] ec_Z3_HighByte;			// bits 31:24
 output reg [7:0] ec_BaseAddress;			// bits 23:16
 
 
-output reg [1:0] Status;
+reg [1:0] Status;
 
 
 
@@ -155,8 +159,8 @@ parameter	AC_SUBSIZE_256K				= 4'b0100;
 parameter	ER_TYPE = {
 									AC_PIC_TYPE_ZORROIII, 
 				
-									//AC_SYSTEM_POOL_NO_LINK,
-									AC_SYSTEM_POOL_LINK ,
+									AC_SYSTEM_POOL_NO_LINK,
+									//AC_SYSTEM_POOL_LINK ,
 				
 									AC_NO_AUTOBOOT_ROM,
 									AC_NEXT_BOART_NOT_RELATED, 
@@ -167,6 +171,14 @@ parameter	ER_TYPE = {
 									//AC_CONFSIZE_256K_128M
 				
 									};
+
+parameter ER_TYPE_POOL_LINK = {	AC_PIC_TYPE_ZORROIII, AC_SYSTEM_POOL_LINK ,
+				
+									AC_NO_AUTOBOOT_ROM,
+									AC_NEXT_BOART_NOT_RELATED, 
+				
+									AC_CONFSIZE_128K_64M
+};
 
 
 parameter	ER_PRODUCT			= 8'h17;			// 004/104:		Product 0x17 (23 decimal)
@@ -231,6 +243,8 @@ always @(posedge clk) begin
 		
 	end
 	
+	else
+	
 	case (Status)		
 
 		PIC_SHUTUP: begin
@@ -241,9 +255,9 @@ always @(posedge clk) begin
 		
 		default: begin
 			if (en & READ & (ZorroState == ZS_MATCH_PHASE )) begin
-				case (autocfg_reg)
-					9'h000: rdata <= ER_TYPE [7:4];
-					9'h100: rdata <= ER_TYPE [3:0];
+				case ({autocfg_reg, 2'b00})
+					9'h000: rdata <= pool_link ? ER_TYPE_POOL_LINK [7:4] : ER_TYPE [7:4];
+					9'h100: rdata <= pool_link ? ER_TYPE_POOL_LINK [3:0] : ER_TYPE [3:0];
 				
 					9'h004: rdata <= ~(ER_PRODUCT [7:4]);
 					9'h104: rdata <= ~(ER_PRODUCT [3:0]);
@@ -267,7 +281,7 @@ always @(posedge clk) begin
 
 			//if (en & READ & (ZorroState [2:0] == ZS_DATA_PHASE )) begin
 			if (en & ~READ & (ZorroState == ZS_WRITE_DATA)) begin
-				casex (autocfg_reg)
+				casex ({autocfg_reg, 2'b00})
 					
 					9'hX44: begin
 						ec_Z3_HighByte <= wdata [15:8];						// 44, word access, address bits A31..A24. Actual configuration
