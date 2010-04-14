@@ -113,16 +113,18 @@ module sdram_controller
   
 
   
-  // @ 133.333 MHz period is 7.5 nano cycle
+  
   /*
+  // @ 133.333 MHz period is 7.5 nano cycle
+  
   parameter TRC_CNTR_VALUE          = 4'd9,           // 9 cycles, == time to wait after refresh, 67.5ns 
                                                       // also time to wait between two ACT commands
             
-              RFSH_INT_CNTR_VALUE   = 24'd2000,
+              RFSH_INT_CNTR_VALUE   = 24'd1000,
               // 24'd2000 ,       
-														// need 4096 refreshes for every 64_000_000 ns
+														// need 8192 refreshes for every 64_000_000 ns
                                                       // so the # of cycles between refreshes is
-                                                      // 64000000 / 4096 / 7.5 = 2083
+                                                      // 64000000 / 8192 / 7.5 = 1041
                                                       // 1043 for 8192 refreshes
             
               TRCD_CNTR_VALUE       = 3'd3,           // ras to cas delay 20ns
@@ -132,45 +134,49 @@ module sdram_controller
 
 */
 
-// @ 100 MHz period is 10ns
+
 /*
-  parameter TRC_CNTR_VALUE          = 4'd7,           // 7 cycles, == time to wait after refresh, 70ns 
+// @ 100 MHz period is 10ns
+//
+parameter 	TRC_CNTR_VALUE			= 4'd7,           // 7 cycles, == time to wait after refresh, 70ns 
                                                       // also time to wait between two ACT commands
             
-              RFSH_INT_CNTR_VALUE   = 24'd1000,
-														// need 4096 refreshes for every 64_000_000 ns
-                                                      // so the # of cycles between refreshes is
-                                                      // 64000000 / 4096 / 7.5 = 2083
-                                                      //
-                                                      // 64000000 / 8192 / 10 = 1043 for 8192 refreshes
+			RFSH_INT_CNTR_VALUE   	= 24'd700,	
+														// need 8192 refreshes for every 64_000_000 ns
+														// so the # of cycles between refreshes is
+														//
+														// 64 000 000 / 8192 / 10 = 781 for 8192 refreshes
             
-              TRCD_CNTR_VALUE       = 3'd2,           // ras to cas delay 20ns
+			TRCD_CNTR_VALUE       	= 3'd2,           // tRCD (RAS to CAS delay) 20ns
                                                       // will also be used for tRP and tRSC
             
-              WAIT_200us_CNTR_VALUE = 16'd20000;      // 20000 200us
+			WAIT_200us_CNTR_VALUE 	= 16'd20000;      // 20000 200us
 
 */
 
 
-	// @ 66 MHz period is 15ns
 
-  parameter TRC_CNTR_VALUE          = 4'd5,           // 7 cycles, == time to wait after refresh, 70ns 
+
+// @ 66 MHz period is 15ns
+//
+parameter 	TRC_CNTR_VALUE          = 4'd5,           // 5 cycles, == time to wait after refresh, 75ns 
                                                       // also time to wait between two ACT commands
             
-              RFSH_INT_CNTR_VALUE   = 24'd500,
+			RFSH_INT_CNTR_VALUE   	= 24'd500,
 														// need 8192 refreshes for every 64_000_000 ns
 														// so the # of cycles between refreshes is                                                      
 														//
 														// 64000000 / 8192 / 15 = 520 for 8192 refreshes
             
-              TRCD_CNTR_VALUE       = 3'd2,           // ras to cas delay 20ns
+			TRCD_CNTR_VALUE       	= 3'd2,           // ras to cas delay 30ns
                                                       // will also be used for tRP and tRSC
             
-              WAIT_200us_CNTR_VALUE = 16'd7000;      // 7000 200us
+			WAIT_200us_CNTR_VALUE 	= 16'd7000;      // 7000 200us
 
 
 
-	// @ 50 MHz period is 15ns
+
+// @ 50 MHz period is 15ns
 /*
   parameter TRC_CNTR_VALUE          = 4'd4,           // 3 cycles, == time to wait after refresh, 80ns 
                                                       // also time to wait between two ACT commands
@@ -277,16 +283,17 @@ module sdram_controller
   // register the user command
   always@ (posedge clk_i) begin
   
-        dat_i_r <= dat_i;
-        address_r <= addr_i;
- 		dqm_n_r <= dqm_n;								
+//        dat_i_r <= dat_i;
+//       address_r <= addr_i;
+// 		dqm_n_r <= dqm_n;								
   
     if (stb_i_r && current_state == ACT_ST) begin
       stb_i_r <= 1'b0;
     //end else if (stb_i && cyc_i) begin
     end else if (stb_i) begin
-//      address_r <= addr_i;
-//      dat_i_r <= dat_i;
+      address_r <= addr_i;
+      dat_i_r <= dat_i;
+      dqm_n_r <= dqm_n;
       we_i_r <= we_i;
       stb_i_r <= stb_i;
     end
@@ -496,7 +503,6 @@ module sdram_controller
     //end else if (current_state == WAIT_PRE_ST) begin
     end else
       ack_o_r = 1'b0;
-    //end 
   end
 
 

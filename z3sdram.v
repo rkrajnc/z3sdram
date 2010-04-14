@@ -294,14 +294,16 @@ reg [8:0] autocfg_reg;
 
 reg [31:0] _addr;
 
-parameter 	ZS_IDLE 			= 4'b0000,
-//parameter ZS_ADDRESS_PHASE 	= 3'd001;
-			ZS_MATCH_PHASE 		= 4'b0001,
-			ZS_DATA_PHASE 		= 4'b0010,
-			ZS_DTACK 			= 4'b0100,
-			ZS_WRITE_DATA		= 4'b1000;
+parameter 	ZS_IDLE 			= 3'b000,
+			ZS_MATCH_PHASE 		= 3'b001,
+			ZS_DATA_PHASE 		= 3'b010,
+			ZS_DTACK 			= 3'b011,
+			ZS_WRITE_DATA		= 3'b100;
 
-reg	[3:0] ZorroState = ZS_IDLE;
+reg	[2:0] ZorroState;
+
+// /* synthesis syn_encoding = "safe" */
+
 
 
 
@@ -342,6 +344,10 @@ falling edge of the logically ORed data strobes; the bus master doesn’t sample /
 after the data strobes are asserted, so a slave can actually assert /DTACK any time after /FCS.
 */
 
+initial begin
+	ZorroState <= ZS_IDLE;
+end
+
 
 // Lock address always in the beginning of FCS
 //
@@ -352,10 +358,12 @@ end
 
 // Resample some input signals
 //
-reg nFCS_r;			// = 1'b1;
-reg nIORST_r;		// = 1'b1;
-reg DOE_r;			// = 1'b0;
-reg [3:0] nDS_r;	// = 4'b1111;
+reg nFCS_r;
+reg nIORST_r;
+reg DOE_r;
+reg [3:0] nDS_r;
+reg [1:0] FC_r;
+reg READ_r;
 
 
 reg nFCS_prev_r;
@@ -367,6 +375,8 @@ always @(posedge clk) begin
 	
 	DOE_r <= DOE;
 	nDS_r [3:0] <= nDS [3:0];		
+	FC_r [1:0] <= FC [1:0];
+	READ_r <= READ;
 
 	// Transfer ADDRESS bits from nFCS async domain
 	if (nFCS_prev_r & ~nFCS_r)
@@ -375,64 +385,59 @@ end
 
 
 
-
+reg ack_o_r;
+reg busy_r;
 always @(posedge clk) begin
 
-	if (~nIORST | nFCS_r) begin
+	ack_o_r <= ack_o;
+	busy_r <= busy;
+
+	if (~nIORST_r | nFCS_r) begin
 		ZorroState <= ZS_IDLE;
 	end
 
 	else
 	
 	  case (ZorroState)
-	
+		
 		ZS_IDLE: begin
-
-			//if (~nFCS_r)				
-			//	addr [31:0] <= _addr [31:0];
-
-			//ZorroState <= (~nFCS & match & ~shutup) ? ZS_MATCH_PHASE : ZS_IDLE;
-			//ZorroState <= (match & ~shutup) ? ZS_MATCH_PHASE : ZS_IDLE;
+		
+		// ??? stb_i <= 1'b0;
 			
 			if (match & ~shutup)
 				ZorroState <= ZS_MATCH_PHASE;
-			
 		end
 
 		ZS_MATCH_PHASE: begin															// 0001						
 			
-			//ZorroState <= (DOE & ~busy) ? ZS_DATA_PHASE : ZS_MATCH_PHASE;
-			//ZorroState <= (DOE_r & ~busy) ? ZS_DATA_PHASE : ZS_MATCH_PHASE;
-			if (DOE_r & ~busy)
+			//if (DOE_r & ~busy_r)
+			if (DOE_r)
 				ZorroState <= ZS_DATA_PHASE;
 		
 		end
 	
 		ZS_DATA_PHASE: begin															// 0010
 
-			if (cardspace_match) begin
-				stb_i <= 1'b1;				
-			end
+	//		if (cardspace_match) begin
+	//			stb_i <= 1'b1;				
+	//		end
 
-			if (READ) begin			
+			if (READ_r) begin			
+		
+				if (cardspace_match)
+					stb_i <= 1'b1;				
+
 				// wait for data from SDRAM or Autoconfig register
 				// then go to ZS_DTACK
 		
-
-				if (configured)
-					ZorroState <= (ack_o) ? ZS_DTACK : ZS_DATA_PHASE;								
-				else
+				if (~configured | ack_o_r)
 					ZorroState <= ZS_DTACK;
-					
-
-				
 		
 			end
 			else /* WRITE */ begin
 				// wait for at least one of nDS [3:0] to be asserted
 				// then latch data and go to ZS_DTACK
 				
-				//if (!(nDS [3:0] == 4'b1111)) begin
 				if (!(nDS_r [3:0] == 4'b1111)) begin
 					data [31:0] <= {AD [31:24], SD [7:0], AD [23:8]};		// for write to Autoconfig regs
 					ZorroState <= ZS_WRITE_DATA;
@@ -441,25 +446,24 @@ always @(posedge clk) begin
 		end
 		
 		ZS_WRITE_DATA: begin
+
+			if (cardspace_match)
+				stb_i <= 1'b1;				
 			
-			if (configured)
-				ZorroState <= (ack_o) ? ZS_DTACK : ZS_WRITE_DATA;
-				//if (ack_o)
-				//	ZorroState <= ZS_DTACK;
-			else
-				ZorroState <= ZS_DTACK;			
+			if (~configured | ack_o_r)
+				ZorroState <= ZS_DTACK;				
 		end
 	
 		ZS_DTACK: begin
 			stb_i <= 1'b0;			
-			
-			//ZorroState <= (nFCS) ? ZS_IDLE : ZS_DTACK;
-			ZorroState <= (nFCS_r) ? ZS_IDLE : ZS_DTACK;
-			//if (nFCS_r)
-			//	ZorroState <= ZS_IDLE;
+
+			if (nFCS_r)
+				ZorroState <= ZS_IDLE;
 		end		
 		
-
+		default: begin
+			ZorroState <= ZS_IDLE;
+		end				
 	  endcase
 end
 
@@ -494,7 +498,7 @@ always @(posedge clk) begin
 end
 
 
-wire select = match & (FC[0] ^ FC [1]);
+wire select = match & (FC_r [0] ^ FC_r [1]);
 
 assign nSLAVEN = ~select | nFCS_r | shutup; // | nCFGINN;
 //assign nSLAVEN = ~select | nFCS | shutup; // | nCFGINN;
@@ -515,14 +519,18 @@ assign nDTACK = nFCS_r | ~dtack_r;
 //assign nDTACK = ~(ZorroState == ZS_DTACK);
 
 
-wire dboe = ~nSLAVEN & DOE_r & READ;
+wire dboe = ~nSLAVEN & DOE_r & READ_r;
 
-
-
+//
+// Output data
+//
 always @(posedge clk) begin
-	if (READ) begin
-		if (configured)
-			data_o [31:0] <= dat_o [31:0];
+	if (READ_r) begin
+		//if (configured) begin
+		if (cardspace_match) begin
+			if (ack_o_r)
+				data_o [31:0] <= dat_o [31:0];
+		end
 		else
 			data_o [31:0] <= {cfg_rdata [7:4], 28'hFFFFFFF};
 	end
@@ -546,10 +554,15 @@ wire [7:4] cfg_rdata;
 wire unconfigured, configured, shutup;
 
 
+wire zs_match = (ZorroState == ZS_MATCH_PHASE);
+wire zs_writedata = (ZorroState == ZS_WRITE_DATA);
+
 Autoconfig _Autoconfig (
 	.clk (clk),
 	
-	.ZorroState (ZorroState [3:0]),
+	//.ZorroState (ZorroState [2:0]),
+	.zs_match (zs_match),
+	.zs_writedata (zs_writedata),
 	.nIORST (nIORST_r), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
 	
 	.autocfg_reg (addr [8:2]),
@@ -565,7 +578,7 @@ Autoconfig _Autoconfig (
 	.configured (configured),
 	.shutup (shutup),
 		
-	.READ (READ), 
+	.READ (READ_r), 
 	.nDS (nDS_r [3:0]),
 	
 	
@@ -586,8 +599,8 @@ leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured),
 sdram_controller sdram_controller_i (
 	.clk_i (clk133), 	
 	.dram_clk_i (clk133_3),
-	.rst_i (~nIORST), 
-	//.rst_i (~nIORST_r), 
+	//.rst_i (~nIORST), 
+	.rst_i (~nIORST_r), 
 	.dll_locked (1'b1),
 	
 	.dram_addr (SA [12:0]),
@@ -602,7 +615,6 @@ sdram_controller sdram_controller_i (
 	.dram_ras_n (nRAS),
 	.dram_we_n (nWE),
 
-//	 .addr_i (addr [23:1]),
 	 .addr_i (addr [25:1]),
 
 	.dat_i ({AD [31:24], SD [7:0], AD [23:8]}),
@@ -612,7 +624,7 @@ sdram_controller sdram_controller_i (
 
 	.ack_o (ack_o),
 	.stb_i (stb_i),	
-	.we_i (~READ),
+	.we_i (~READ_r),
 	
 	.busy (busy)
 	
@@ -622,8 +634,9 @@ sdram_controller sdram_controller_i (
 
 
 
-/*
 
+// ------------------------------------------------ mem test --------------------------
+/*
 //
 // Memory tester
 //
@@ -681,7 +694,7 @@ sdram_controller sdram_controller_i (
 );
 
 */
-
+// ------------------------------------------------ mem test --------------------------
 
 
 

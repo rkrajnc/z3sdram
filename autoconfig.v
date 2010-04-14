@@ -49,7 +49,9 @@ nCFGINN	nCFGOUTN
 module Autoconfig (
 	
 	clk,
-	ZorroState,
+	//ZorroState,
+	zs_match,
+	zs_writedata,
 	
 	nIORST,
 	nCFGINN,
@@ -72,7 +74,9 @@ module Autoconfig (
 );
 
 input clk;
-input [3:0] ZorroState;
+//input [2:0] ZorroState;
+input zs_match;
+input zs_writedata;
 input nIORST;
 input nCFGINN;
 output nCFGOUTN;
@@ -211,23 +215,22 @@ parameter	ER_MANUFACTURER_LO	= 8'ha6;			// 014/114:							low byte
 
 
 
-
 /*
-parameter ZS_IDLE 			= 3'b000;
-parameter ZS_ADDRESS_PHASE 	= 3'b001;
-parameter ZS_MATCH_PHASE 	= 3'b010;
-parameter ZS_DATA_PHASE 	= 3'b011;
-parameter ZS_DTACK 			= 3'b100;
-parameter ZS_WRITE_DATA		= 3'b101;
 
+parameter ZS_IDLE 			= 3'b000;
+parameter ZS_MATCH_PHASE 	= 3'b001;
+parameter ZS_DATA_PHASE 	= 3'b010;
+parameter ZS_DTACK 			= 3'b011;
+parameter ZS_WRITE_DATA		= 3'b100;
 */
 
+/*
 parameter ZS_IDLE 			= 4'b0000;
-//parameter ZS_ADDRESS_PHASE 	= 3'd001;
 parameter ZS_MATCH_PHASE 	= 4'b0001;
 parameter ZS_DATA_PHASE 	= 4'b0010;
 parameter ZS_DTACK 			= 4'b0100;
 parameter ZS_WRITE_DATA		= 4'b1000;
+*/
 
 
 	
@@ -254,7 +257,8 @@ always @(posedge clk) begin
 		end
 		
 		default: begin
-			if (en & READ & (ZorroState == ZS_MATCH_PHASE )) begin
+			//if (en & READ & (ZorroState == ZS_MATCH_PHASE )) begin
+			if (en & READ & zs_match) begin
 				case ({autocfg_reg, 2'b00})
 					9'h000: rdata <= pool_link ? ER_TYPE_POOL_LINK [7:4] : ER_TYPE [7:4];
 					9'h100: rdata <= pool_link ? ER_TYPE_POOL_LINK [3:0] : ER_TYPE [3:0];
@@ -280,13 +284,16 @@ always @(posedge clk) begin
 			end
 
 			//if (en & READ & (ZorroState [2:0] == ZS_DATA_PHASE )) begin
-			if (en & ~READ & (ZorroState == ZS_WRITE_DATA)) begin
+			//if (en & ~READ & (ZorroState == ZS_WRITE_DATA)) begin
+			if (en & ~READ & zs_writedata) begin
 				casex ({autocfg_reg, 2'b00})
 					
 					9'hX44: begin
 						ec_Z3_HighByte <= wdata [15:8];						// 44, word access, address bits A31..A24. Actual configuration
 						//ec_BaseAddress <= nDS [1] ? ec_BaseAddress : wdata [15:8]; - somehow word access is nDS [3] == 0, nDS [2] == 0
-						ec_BaseAddress <= nDS [2] ? ec_BaseAddress : wdata [7:0];
+						//ec_BaseAddress <= nDS [2] ? ec_BaseAddress : wdata [7:0];
+						if (~nDS [2])
+							ec_BaseAddress <= wdata [7:0];
 						//ec_BaseAddress <= wdata [15:8];
 						Status <= PIC_CONFIGURED;
 					end
