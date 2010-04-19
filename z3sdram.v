@@ -298,7 +298,8 @@ parameter 	ZS_IDLE 			= 3'b000,
 			ZS_MATCH_PHASE 		= 3'b001,
 			ZS_DATA_PHASE 		= 3'b010,
 			ZS_DTACK 			= 3'b011,
-			ZS_WRITE_DATA		= 3'b100;
+			ZS_WRITE_DATA		= 3'b100,
+			ZS_WAIT_ACK			= 3'b101;
 
 reg	[2:0] ZorroState;
 
@@ -345,7 +346,7 @@ after the data strobes are asserted, so a slave can actually assert /DTACK any t
 */
 
 initial begin
-	ZorroState <= ZS_IDLE;
+	ZorroState <= ZS_IDLE;	
 end
 
 
@@ -392,46 +393,76 @@ always @(posedge clk) begin
 	ack_o_r <= ack_o;
 	busy_r <= busy;
 
-	if (~nIORST_r | nFCS_r) begin
+	if (~nIORST | nFCS) begin
 		ZorroState <= ZS_IDLE;
+		data_o <= 0;
 	end
 
 	else
 	
 	  case (ZorroState)
 		
-		ZS_IDLE: begin
+		ZS_IDLE: begin		
 		
-		// ??? stb_i <= 1'b0;
-			
-			if (match & ~shutup)
+			stb <= 1'b0;						
+					
+			if (match & ~shutup)								// !!! ахтунг, замечены фальшивые переходы в ZS_MATCH_PHASE! !!!
 				ZorroState <= ZS_MATCH_PHASE;
+				
 		end
 
-		ZS_MATCH_PHASE: begin															// 0001						
+		ZS_MATCH_PHASE: begin																			
+
+		// Вариант ускорения для READ:
+		// можно сразу запустить цикл чтения (stb <= 1'b1)
+		// и перейти в состояние ZS_WAIT_ACK. 
+		// Поскольку у нас чтение всегда кеширующее и возвращает
+		// всегда 32 бита, то нет смысла ждать nDS. Также нет смысла ждать DOE, раз сам цикл контроллера
+		// SDRAM занимает около 100нс.
 			
 			//if (DOE_r & ~busy_r)
-			if (DOE_r)
-				ZorroState <= ZS_DATA_PHASE;
+		//	if (DOE_r)
+		//		ZorroState <= ZS_DATA_PHASE;
+		
+			if (READ & cardspace_match) begin
+				stb <= 1'b1;
+				ZorroState <= ZS_WAIT_ACK;
+			end
+			else
+				if (DOE_r)
+					ZorroState <= ZS_DATA_PHASE;
 		
 		end
 	
-		ZS_DATA_PHASE: begin															// 0010
+		ZS_DATA_PHASE: begin															
 
 	//		if (cardspace_match) begin
-	//			stb_i <= 1'b1;				
+	//			stb <= 1'b1;				
 	//		end
 
 			if (READ_r) begin			
 		
 				if (cardspace_match)
-					stb_i <= 1'b1;				
+					stb <= 1'b1;				
 
 				// wait for data from SDRAM or Autoconfig register
 				// then go to ZS_DTACK
 		
-				if (~configured | ack_o_r)
+				if (~configured | ack_o_r) begin					
 					ZorroState <= ZS_DTACK;
+				end
+		
+				if (cfgspace_match) begin					
+					data_o [31:0] <= {cfg_rdata [7:4], 28'hFFFFFFF};
+					ZorroState <= ZS_DTACK;					
+				end
+				else begin
+					if (ack_o_r) begin
+						data_o [31:0] <= dat_o [31:0];
+						ZorroState <= ZS_DTACK;
+					end
+				end
+		
 		
 			end
 			else /* WRITE */ begin
@@ -448,17 +479,26 @@ always @(posedge clk) begin
 		ZS_WRITE_DATA: begin
 
 			if (cardspace_match)
-				stb_i <= 1'b1;				
+				stb <= 1'b1;				
 			
-			if (~configured | ack_o_r)
+			if (~configured | ack_o_r) begin				
 				ZorroState <= ZS_DTACK;				
+			end
+		end
+
+
+		ZS_WAIT_ACK: begin
+			if (ack_o_r) begin
+				data_o [31:0] <= dat_o [31:0];
+				ZorroState <= ZS_DTACK;
+			end
 		end
 	
-		ZS_DTACK: begin
-			stb_i <= 1'b0;			
+		ZS_DTACK: begin					
+			stb <= 1'b0;
 
-			if (nFCS_r)
-				ZorroState <= ZS_IDLE;
+			//if (nFCS_r)
+			//	ZorroState <= ZS_IDLE;
 		end		
 		
 		default: begin
@@ -481,46 +521,56 @@ end
 
 
 
-wire cardspace_match = (addr [31:26] == CardBaseAddr [31:26]);			// our card is being addressed (4xxx.xxxx)
+//wire cardspace_match = (addr [31:26] == CardBaseAddr [31:26]);			// our card is being addressed (4xxx.xxxx)
+wire cardspace_match = (_addr [31:26] == CardBaseAddr [31:26]);			// our card is being addressed (4xxx.xxxx)
 
-wire cfgspace_match = (addr [31:16] == 16'hFF00);						// Autoconfig configuration space is being addressed
+//wire cfgspace_match = (addr [31:16] == 16'hFF00);						// Autoconfig configuration space is being addressed
+wire cfgspace_match = (_addr [31:16] == 16'hFF00);						// Autoconfig configuration space is being addressed
 
-//wire match = ~nFCS_r & (cardspace_match | cfgspace_match);
-//wire match = ~nFCS & (cardspace_match | cfgspace_match);
-wire match = match_r;
+
+wire match = match_r; // & ~nFCS_r;
 
 reg match_r;
 always @(posedge clk) begin
-	if (nFCS_r)	
-		match_r <= 1'b0;
-	else
-		match_r <= cardspace_match | cfgspace_match;
+	match_r <= ~nFCS & (cardspace_match | cfgspace_match) & (FC_r [0] ^ FC_r [1]);
 end
 
 
-wire select = match & (FC_r [0] ^ FC_r [1]);
 
-assign nSLAVEN = ~select | nFCS_r | shutup; // | nCFGINN;
-//assign nSLAVEN = ~select | nFCS | shutup; // | nCFGINN;
+//wire select = match & (FC_r [0] ^ FC_r [1]);
+wire select = match;
+
+
+
+//
+// nSLAVEN
+//
+//assign nSLAVEN = ~select | nFCS_r | shutup; // | nCFGINN;
+assign nSLAVEN = ~select | nFCS;	// | shutup; // | nCFGINN;
 
 
 //
 // DTACK
 //
 reg dtack_r;
-wire dtack = (ZorroState == ZS_DTACK);
+//wire dtack = (ZorroState == ZS_DTACK);
 always @(posedge clk) begin
-	dtack_r <= dtack;
+	dtack_r <= zs_dtack;
 end
 
-assign nDTACK = nFCS_r | ~dtack_r;
+
+
+//assign nDTACK = nFCS_r | ~dtack_r;
+assign nDTACK = nFCS | ~dtack_r;
 //assign nDTACK = nFCS_r | !(ZorroState == ZS_DTACK);
 //assign nDTACK = nFCS_r ? 1'bZ : (ZorroState != ZS_DTACK);	// tristate
 //assign nDTACK = ~(ZorroState == ZS_DTACK);
 
 
-wire dboe = ~nSLAVEN & DOE_r & READ_r;
+//wire dboe = ~nSLAVEN & DOE_r & READ_r;
+wire dboe = ~nSLAVEN & DOE & READ;
 
+/*
 //
 // Output data
 //
@@ -535,8 +585,11 @@ always @(posedge clk) begin
 			data_o [31:0] <= {cfg_rdata [7:4], 28'hFFFFFFF};
 	end
 end
+*/
 
-assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
+
+//assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
+assign {AD [31:24], SD [7:0], AD [23:8]} = (dboe & zs_dtack) ? data_o [31:0] : 32'bZ;
 
 /*
 assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? 
@@ -556,6 +609,7 @@ wire unconfigured, configured, shutup;
 
 wire zs_match = (ZorroState == ZS_MATCH_PHASE);
 wire zs_writedata = (ZorroState == ZS_WRITE_DATA);
+wire zs_dtack = (ZorroState == ZS_DTACK);
 
 Autoconfig _Autoconfig (
 	.clk (clk),
@@ -616,14 +670,14 @@ sdram_controller sdram_controller_i (
 	.dram_we_n (nWE),
 
 	 .addr_i (addr [25:1]),
-
-	.dat_i ({AD [31:24], SD [7:0], AD [23:8]}),
+	
+	.dat_i (data [31:0]),
 	.dat_o (dat_o [31:0]),
 	
 	.dqm_n (nDS_r [3:0]),	
 
 	.ack_o (ack_o),
-	.stb_i (stb_i),	
+	.stb_i (stb),	
 	.we_i (~READ_r),
 	
 	.busy (busy)
@@ -692,7 +746,6 @@ sdram_controller sdram_controller_i (
 	
 	.busy (busy)
 );
-
 */
 // ------------------------------------------------ mem test --------------------------
 
@@ -702,7 +755,7 @@ sdram_controller sdram_controller_i (
 wire [31:0] dat_o;
 wire we_i;
 wire ack_o;
-reg stb_i;
+reg stb;
 
 wire red_led;
 wire busy;
@@ -723,5 +776,6 @@ wire clk133, clk133_3;
 `endif
 
 endmodule
+
 
 

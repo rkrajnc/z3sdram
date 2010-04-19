@@ -114,7 +114,7 @@ module sdram_controller
 
   
   
-  /*
+  
   // @ 133.333 MHz period is 7.5 nano cycle
   
   parameter TRC_CNTR_VALUE          = 4'd9,           // 9 cycles, == time to wait after refresh, 67.5ns 
@@ -132,12 +132,13 @@ module sdram_controller
             
               WAIT_200us_CNTR_VALUE = 16'd27000;      // 27000 200us
 
-*/
 
 
-/*
+
+
 // @ 100 MHz period is 10ns
 //
+/*
 parameter 	TRC_CNTR_VALUE			= 4'd7,           // 7 cycles, == time to wait after refresh, 70ns 
                                                       // also time to wait between two ACT commands
             
@@ -159,6 +160,7 @@ parameter 	TRC_CNTR_VALUE			= 4'd7,           // 7 cycles, == time to wait after
 
 // @ 66 MHz period is 15ns
 //
+/*
 parameter 	TRC_CNTR_VALUE          = 4'd5,           // 5 cycles, == time to wait after refresh, 75ns 
                                                       // also time to wait between two ACT commands
             
@@ -172,6 +174,8 @@ parameter 	TRC_CNTR_VALUE          = 4'd5,           // 5 cycles, == time to wai
                                                       // will also be used for tRP and tRSC
             
 			WAIT_200us_CNTR_VALUE 	= 16'd7000;      // 7000 200us
+
+*/
 
 
 
@@ -558,13 +562,10 @@ end
 
   
   // data
-  always@ (posedge clk_i) begin
-  //always@ (posedge dram_clk_i) begin
-  
+  always@ (posedge clk_i) begin 
 	if (rst_i) begin
       dat_o_r <= 32'b0;
       dram_dq_r <= 16'b0;
-
       oe_r <= 1'b0;
 	end
 	else begin

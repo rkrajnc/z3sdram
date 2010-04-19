@@ -49,7 +49,7 @@ nCFGINN	nCFGOUTN
 module Autoconfig (
 	
 	clk,
-	//ZorroState,
+	
 	zs_match,
 	zs_writedata,
 	
@@ -74,7 +74,6 @@ module Autoconfig (
 );
 
 input clk;
-//input [2:0] ZorroState;
 input zs_match;
 input zs_writedata;
 input nIORST;
@@ -84,7 +83,6 @@ input READ;
 input [3:0] nDS;
 input en;
 
-//input [8:0] autocfg_reg;
 input [6:0] autocfg_reg;
 input [15:0] wdata;
 output reg [7:4] rdata;
@@ -154,10 +152,6 @@ parameter	AC_SUBSIZE_128K				= 4'b0011;
 parameter	AC_SUBSIZE_256K				= 4'b0100;
 
 
-//parameter	ER_TYPE				= 8'b10100000;		// 000/100:		Zorro III card, link memory into OS pool, no ROM, no next board, ext.16 megabytes
-//parameter	ER_TYPE				= 8'b10000000;		// 000/100: 	Zorro III card, don't link memory, no ROM, no next board, unextended 8 megabytes
-
-////parameter	ER_TYPE				= 8'b10100101;		// Zorro III card, link memory into OS pool, no ROM, no next board, ext.16 megabytes
 
 
 parameter	ER_TYPE = {
@@ -187,8 +181,6 @@ parameter ER_TYPE_POOL_LINK = {	AC_PIC_TYPE_ZORROIII, AC_SYSTEM_POOL_LINK ,
 
 parameter	ER_PRODUCT			= 8'h17;			// 004/104:		Product 0x17 (23 decimal)
 
-//parameter	ER_FLAGS			= 8'b10110001;		// 008/108:		Zorro III memory card, can be shut up, ext.size, , autosized by OS
-//parameter	ER_FLAGS			= 8'b00010000;		// 008/108:		I/O card, can be shut, no ext, logical size match physical size
 
 parameter	ER_FLAGS			= {
 									AC_MEMORY_DEVICE,
@@ -215,31 +207,12 @@ parameter	ER_MANUFACTURER_LO	= 8'ha6;			// 014/114:							low byte
 
 
 
-/*
-
-parameter ZS_IDLE 			= 3'b000;
-parameter ZS_MATCH_PHASE 	= 3'b001;
-parameter ZS_DATA_PHASE 	= 3'b010;
-parameter ZS_DTACK 			= 3'b011;
-parameter ZS_WRITE_DATA		= 3'b100;
-*/
-
-/*
-parameter ZS_IDLE 			= 4'b0000;
-parameter ZS_MATCH_PHASE 	= 4'b0001;
-parameter ZS_DATA_PHASE 	= 4'b0010;
-parameter ZS_DTACK 			= 4'b0100;
-parameter ZS_WRITE_DATA		= 4'b1000;
-*/
-
-
-	
 
 always @(posedge clk) begin
 
 	if (~nIORST) begin
 		Status <= PIC_UNCONFIGURED;
-		//Status <= SHUTUP;
+
 		ec_BaseAddress [7:0] <= 8'h77;
 		ec_Z3_HighByte [7:0] <= 8'h77;
 		
@@ -256,8 +229,7 @@ always @(posedge clk) begin
 		PIC_CONFIGURED: begin
 		end
 		
-		default: begin
-			//if (en & READ & (ZorroState == ZS_MATCH_PHASE )) begin
+		default: begin			
 			if (en & READ & zs_match) begin
 				case ({autocfg_reg, 2'b00})
 					9'h000: rdata <= pool_link ? ER_TYPE_POOL_LINK [7:4] : ER_TYPE [7:4];
@@ -282,12 +254,11 @@ always @(posedge clk) begin
 					
 				endcase								
 			end
+			else
+				rdata <= 4'b1111;
 
-			//if (en & READ & (ZorroState [2:0] == ZS_DATA_PHASE )) begin
-			//if (en & ~READ & (ZorroState == ZS_WRITE_DATA)) begin
 			if (en & ~READ & zs_writedata) begin
 				casex ({autocfg_reg, 2'b00})
-					
 					9'hX44: begin
 						ec_Z3_HighByte <= wdata [15:8];						// 44, word access, address bits A31..A24. Actual configuration
 						//ec_BaseAddress <= nDS [1] ? ec_BaseAddress : wdata [15:8]; - somehow word access is nDS [3] == 0, nDS [2] == 0
