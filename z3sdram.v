@@ -292,14 +292,14 @@ reg [31:0] data_o;
 
 reg [8:0] autocfg_reg;
 
-reg [31:0] _addr;
 
 parameter 	ZS_IDLE 			= 3'b000,
 			ZS_MATCH_PHASE 		= 3'b001,
 			ZS_DATA_PHASE 		= 3'b010,
 			ZS_DTACK 			= 3'b011,
 			ZS_WRITE_DATA		= 3'b100,
-			ZS_WAIT_ACK			= 3'b101;
+			ZS_WAIT_ACK			= 3'b101,
+			ZS_DTACK0			= 3'b110;
 
 reg	[2:0] ZorroState;
 
@@ -353,7 +353,7 @@ end
 // Lock address always in the beginning of FCS
 //
 always @(negedge nFCS) begin
-	_addr [31:0] <= {AD [31:8], A [7:2], 2'b0};	
+	addr [31:0] <= {AD [31:8], A [7:2], 2'b0};	
 end
 
 
@@ -367,21 +367,15 @@ reg [1:0] FC_r;
 reg READ_r;
 
 
-reg nFCS_prev_r;
 always @(posedge clk) begin
 	nIORST_r <= nIORST;
 	nFCS_r <= nFCS;
-	
-	nFCS_prev_r <= nFCS_r;
 	
 	DOE_r <= DOE;
 	nDS_r [3:0] <= nDS [3:0];		
 	FC_r [1:0] <= FC [1:0];
 	READ_r <= READ;
 
-	// Transfer ADDRESS bits from nFCS async domain
-	if (nFCS_prev_r & ~nFCS_r)
-		addr [31:0] <= _addr [31:0];
 end
 
 
@@ -406,7 +400,7 @@ always @(posedge clk) begin
 		
 			stb <= 1'b0;						
 					
-			if (match & ~shutup)								// !!! ахтунг, замечены фальшивые переходы в ZS_MATCH_PHASE! !!!
+			if (match & ~shutup)
 				ZorroState <= ZS_MATCH_PHASE;
 				
 		end
@@ -436,10 +430,6 @@ always @(posedge clk) begin
 	
 		ZS_DATA_PHASE: begin															
 
-	//		if (cardspace_match) begin
-	//			stb <= 1'b1;				
-	//		end
-
 			if (READ_r) begin			
 		
 				if (cardspace_match)
@@ -449,20 +439,19 @@ always @(posedge clk) begin
 				// then go to ZS_DTACK
 		
 				if (~configured | ack_o_r) begin					
-					ZorroState <= ZS_DTACK;
+					ZorroState <= ZS_DTACK0;
 				end
 		
 				if (cfgspace_match) begin					
 					data_o [31:0] <= {cfg_rdata [7:4], 28'hFFFFFFF};
-					ZorroState <= ZS_DTACK;					
+					ZorroState <= ZS_DTACK0;					
 				end
 				else begin
 					if (ack_o_r) begin
 						data_o [31:0] <= dat_o [31:0];
-						ZorroState <= ZS_DTACK;
+						ZorroState <= ZS_DTACK0;
 					end
 				end
-		
 		
 			end
 			else /* WRITE */ begin
@@ -471,18 +460,18 @@ always @(posedge clk) begin
 				
 				if (!(nDS_r [3:0] == 4'b1111)) begin
 					data [31:0] <= {AD [31:24], SD [7:0], AD [23:8]};		// for write to Autoconfig regs
+					
+					if (cardspace_match)
+						stb <= 1'b1;				
+
 					ZorroState <= ZS_WRITE_DATA;
 				end
 			end
 		end
 		
 		ZS_WRITE_DATA: begin
-
-			if (cardspace_match)
-				stb <= 1'b1;				
-			
 			if (~configured | ack_o_r) begin				
-				ZorroState <= ZS_DTACK;				
+				ZorroState <= ZS_DTACK0;				
 			end
 		end
 
@@ -490,15 +479,16 @@ always @(posedge clk) begin
 		ZS_WAIT_ACK: begin
 			if (ack_o_r) begin
 				data_o [31:0] <= dat_o [31:0];
-				ZorroState <= ZS_DTACK;
+				ZorroState <= ZS_DTACK0;
 			end
 		end
 	
+		ZS_DTACK0: begin								// to let data settle in {AD, SD}
+			ZorroState <= ZS_DTACK;
+		end		
+
 		ZS_DTACK: begin					
 			stb <= 1'b0;
-
-			//if (nFCS_r)
-			//	ZorroState <= ZS_IDLE;
 		end		
 		
 		default: begin
@@ -521,11 +511,11 @@ end
 
 
 
-//wire cardspace_match = (addr [31:26] == CardBaseAddr [31:26]);			// our card is being addressed (4xxx.xxxx)
-wire cardspace_match = (_addr [31:26] == CardBaseAddr [31:26]);			// our card is being addressed (4xxx.xxxx)
+wire cardspace_match = (addr [31:26] == CardBaseAddr [31:26]);			// our card is being addressed (4xxx.xxxx)
 
-//wire cfgspace_match = (addr [31:16] == 16'hFF00);						// Autoconfig configuration space is being addressed
-wire cfgspace_match = (_addr [31:16] == 16'hFF00);						// Autoconfig configuration space is being addressed
+
+wire cfgspace_match = (addr [31:16] == 16'hFF00);						// Autoconfig configuration space is being addressed
+
 
 
 wire match = match_r; // & ~nFCS_r;
@@ -558,10 +548,11 @@ always @(posedge clk) begin
 	dtack_r <= zs_dtack;
 end
 
-
-
-//assign nDTACK = nFCS_r | ~dtack_r;
-assign nDTACK = nFCS | ~dtack_r;
+//
+// nDTACK
+//
+//assign nDTACK = nFCS | ~dtack_r;
+assign nDTACK = (nFCS | ~dtack_r) ? 1'bZ : 1'b0;
 //assign nDTACK = nFCS_r | !(ZorroState == ZS_DTACK);
 //assign nDTACK = nFCS_r ? 1'bZ : (ZorroState != ZS_DTACK);	// tristate
 //assign nDTACK = ~(ZorroState == ZS_DTACK);
@@ -588,8 +579,8 @@ end
 */
 
 
-//assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
-assign {AD [31:24], SD [7:0], AD [23:8]} = (dboe & zs_dtack) ? data_o [31:0] : 32'bZ;
+assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
+
 
 /*
 assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? 

@@ -202,7 +202,6 @@ set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
 set_global_assignment -name SIMULATION_MODE TIMING
 set_global_assignment -name FITTER_EARLY_TIMING_ESTIMATE_MODE PESSIMISTIC
 set_global_assignment -name SAVE_DISK_SPACE OFF
-set_instance_assignment -name CYCLONEII_TERMINATION OFF -to nFCS
 set_instance_assignment -name CYCLONEII_TERMINATION OFF -to DOE
 set_instance_assignment -name CYCLONEII_TERMINATION OFF -to READ
 set_instance_assignment -name CYCLONEII_TERMINATION OFF -to SENSEZ3
@@ -218,7 +217,6 @@ set_instance_assignment -name CYCLONEII_TERMINATION OFF -to nDS
 set_instance_assignment -name CYCLONEII_TERMINATION OFF -to A
 set_instance_assignment -name CYCLONEII_TERMINATION OFF -to Zorro
 set_instance_assignment -name CYCLONEII_TERMINATION "SERIES 25 OHMS" -to LED
-set_instance_assignment -name CYCLONEII_TERMINATION OFF -to A[7]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to A
 set_instance_assignment -name CYCLONEII_TERMINATION "SERIES 25 OHMS" -to AD
 set_instance_assignment -name CYCLONEII_TERMINATION "SERIES 25 OHMS" -to SD
@@ -227,44 +225,44 @@ set_global_assignment -name ENABLE_SIGNALTAP ON
 set_global_assignment -name USE_SIGNALTAP_FILE stp2.stp
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to SENSEZ3
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to nCFGINN
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[31]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[30]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[29]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[28]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[27]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[26]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[25]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[24]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[23]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[22]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[21]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[20]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[19]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[18]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[17]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[16]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[15]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[14]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[13]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[12]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[11]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[10]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[9]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to AD[8]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[31]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[30]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[29]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[28]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[27]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[26]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[25]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[24]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[23]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[22]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[21]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[20]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[19]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[18]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[17]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[16]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[15]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[14]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[13]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[12]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[11]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[10]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[9]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to AD[8]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to A[7]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to A[6]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to A[5]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to A[4]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to A[3]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to A[2]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to SD[7]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to SD[6]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to SD[5]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to SD[4]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to SD[3]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to SD[2]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to SD[1]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to SD[0]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to SD[7]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to SD[6]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to SD[5]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to SD[4]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to SD[3]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to SD[2]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to SD[1]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to SD[0]
 set_global_assignment -name ASSIGNMENT_GROUP_MEMBER SA[12..0] -section_id SDRAM
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to FC[1]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to FC[0]
@@ -1210,5 +1208,18 @@ set_global_assignment -name SLD_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_LOWORD=5
 set_global_assignment -name VECTOR_WAVEFORM_FILE fcs_read.vwf
 set_global_assignment -name SETUP_HOLD_DETECTION OFF
 set_global_assignment -name GLITCH_DETECTION OFF
-set_global_assignment -name INCREMENTAL_VECTOR_INPUT_SOURCE fcs_read.vwf
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to SD[7]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to SD[6]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to SD[5]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to SD[4]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to SD[3]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to SD[2]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to SD[1]
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to SD[0]
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to nDTACK
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to nFCS
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to nSLAVEN
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
+set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL OFF
+set_global_assignment -name INCREMENTAL_VECTOR_INPUT_SOURCE fcs_read.vwf
