@@ -353,7 +353,7 @@ after the data strobes are asserted, so a slave can actually assert /DTACK any t
 
 initial begin
 	ZorroState <= ZS_IDLE;
-	start_cycle <= 1'b0;
+
 	zs_idle <= 1'b0;
 	zs_match <= 1'b0;
 	zs_writedata <= 1'b0;
@@ -383,7 +383,7 @@ wire match = (cardspace_match | cfgspace_match) & (FC_r [0] ^ FC_r [1]);
 //wire select = ~nFCS & match;
 
 
-reg start_cycle;
+
 reg match_r;
 always @(posedge clk) begin	
 	nFCS_r <= nFCS;
@@ -405,13 +405,10 @@ always @(posedge clk) begin
 	if (~nIORST | nFCS) begin
 		ZorroState <= ZS_IDLE;
 		data_o <= 0;
-		stb <= 1'b0;
-		start_cycle <= 1'b0;
+		stb <= 1'b0;		
 	end
 
-	else begin
-	
-	  start_cycle <= match_r;
+	else begin	  
 	
 	  case (ZorroState)
 		
@@ -419,7 +416,7 @@ always @(posedge clk) begin
 		
 			stb <= 1'b0;						
 					
-			if (start_cycle & ~shutup)
+			if (match_r & ~shutup)
 				ZorroState <= ZS_MATCH_PHASE;				
 		end
 
