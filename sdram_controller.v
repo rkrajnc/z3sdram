@@ -116,7 +116,7 @@ module sdram_controller
   
   
   // @ 133.333 MHz period is 7.5 nano cycle
-  
+  /*
   parameter TRC_CNTR_VALUE          = 4'd9,           // 9 cycles, == time to wait after refresh, 67.5ns 
                                                       // also time to wait between two ACT commands
             
@@ -132,13 +132,13 @@ module sdram_controller
             
               WAIT_200us_CNTR_VALUE = 16'd27000;      // 27000 200us
 
-
+*/
 
 
 
 // @ 100 MHz period is 10ns
 //
-/*
+
 parameter 	TRC_CNTR_VALUE			= 4'd7,           // 7 cycles, == time to wait after refresh, 70ns 
                                                       // also time to wait between two ACT commands
             
@@ -151,9 +151,9 @@ parameter 	TRC_CNTR_VALUE			= 4'd7,           // 7 cycles, == time to wait after
 			TRCD_CNTR_VALUE       	= 3'd2,           // tRCD (RAS to CAS delay) 20ns
                                                       // will also be used for tRP and tRSC
             
-			WAIT_200us_CNTR_VALUE 	= 16'd20000;      // 20000 200us
+			WAIT_200us_CNTR_VALUE 	= 16'd10000;      // 10000 100us
 
-*/
+
 
 
 
@@ -175,8 +175,8 @@ parameter 	TRC_CNTR_VALUE          = 4'd5,           // 5 cycles, == time to wai
             
 			WAIT_200us_CNTR_VALUE 	= 16'd7000;      // 7000 200us
 
-*/
 
+*/
 
 
 
@@ -436,11 +436,9 @@ parameter 	TRC_CNTR_VALUE          = 4'd5,           // 5 cycles, == time to wai
     case (current_state)
       IDLE_ST:
         if (!init_done)               next_state = IDLE_ST;
-
-
         else if (do_refresh)          next_state = REFRESH_ST;
-        //else if (stb_i_r)             next_state = ACT_ST;
-        else if (stb_i)		           next_state = ACT_ST;
+        else if (stb_i_r)             next_state = ACT_ST;
+        //else if (stb_i)		           next_state = ACT_ST;						// ???
         else                          next_state = IDLE_ST;
 
 
@@ -502,11 +500,16 @@ parameter 	TRC_CNTR_VALUE          = 4'd5,           // 5 cycles, == time to wai
   always@ (posedge clk_i) begin  
     if (current_state == READ_PRE_ST ||
         current_state == WRITE_PRE_ST) begin
+
+//    if (current_state == READ_PRE_ST ||
+//        (we_i_r && current_state == ACT_ST)) begin
+
       ack_o_r = 1'b1;
 
-    //end else if (current_state == WAIT_PRE_ST) begin
-    end else
+    end else if (current_state == WAIT_PRE_ST) begin
+    //end else
       ack_o_r = 1'b0;
+    end
   end
 
 

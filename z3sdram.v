@@ -293,18 +293,24 @@ reg [31:0] data_o;
 reg [8:0] autocfg_reg;
 
 
-parameter 	ZS_IDLE 			= 3'b000,
-			ZS_MATCH_PHASE 		= 3'b001,
-			ZS_DATA_PHASE 		= 3'b010,
-			ZS_DTACK 			= 3'b011,
-			ZS_WRITE_DATA		= 3'b100,
-			ZS_WAIT_ACK			= 3'b101,
-			ZS_DTACK0			= 3'b110;
+parameter 	ZS_IDLE 			= 4'b0000,
+			ZS_MATCH_PHASE 		= 4'b0001,
+			ZS_DATA_PHASE 		= 4'b0010,
+			ZS_DTACK 			= 4'b0011,
+			ZS_WRITE_DATA		= 4'b0100,
+			ZS_WAIT_ACK			= 4'b0101,
+			ZS_DTACK0			= 4'b0110,
+			ZS_WRITE_DATA_STB	= 4'b0111,
+			ZS_READ_STB			= 4'b1000,
+			ZS_FAST_READ		= 4'b1001,
+			ZS_WRITE_DATA_STB1	= 4'b1010,
+			
+			ZS_DTACK1			= 4'b1011,
+			ZS_DTACK2			= 4'b1100,
+			ZS_DTACK3			= 4'b1101,
+			ZS_DTACK4			= 4'b1110;
 
-reg	[2:0] ZorroState;
-
-// /* synthesis syn_encoding = "safe" */
-
+reg	[3:0] ZorroState;
 
 
 
@@ -346,53 +352,66 @@ after the data strobes are asserted, so a slave can actually assert /DTACK any t
 */
 
 initial begin
-	ZorroState <= ZS_IDLE;	
+	ZorroState <= ZS_IDLE;
+	start_cycle <= 1'b0;
+	zs_idle <= 1'b0;
+	zs_match <= 1'b0;
+	zs_writedata <= 1'b0;
+	zs_dtack <= 1'b0;
 end
 
+
+reg nFCS_r;
+reg DOE_r;
+reg [3:0] nDS_r;
+reg [3:0] _nDS_r;
+reg [1:0] FC_r;
+reg READ_r;
 
 // Lock address always in the beginning of FCS
 //
 always @(negedge nFCS) begin
 	addr [31:0] <= {AD [31:8], A [7:2], 2'b0};	
+	FC_r [1:0] <= FC [1:0];
+	READ_r <= READ;
 end
 
+wire cardspace_match = (addr [31:26] == CardBaseAddr [31:26]);			// our card is being addressed (4xxx.xxxx)
+wire cfgspace_match = (addr [31:16] == 16'hFF00);						// Autoconfig configuration space is being addressed
+wire match = (cardspace_match | cfgspace_match) & (FC_r [0] ^ FC_r [1]);
 
-// Resample some input signals
-//
-reg nFCS_r;
-reg nIORST_r;
-reg DOE_r;
-reg [3:0] nDS_r;
-reg [1:0] FC_r;
-reg READ_r;
+//wire select = ~nFCS & match;
 
 
-always @(posedge clk) begin
-	nIORST_r <= nIORST;
+reg start_cycle;
+reg match_r;
+always @(posedge clk) begin	
 	nFCS_r <= nFCS;
 	
 	DOE_r <= DOE;
-	nDS_r [3:0] <= nDS [3:0];		
-	FC_r [1:0] <= FC [1:0];
-	READ_r <= READ;
-
+	_nDS_r [3:0] <= nDS [3:0];
+	nDS_r [3:0] <= _nDS_r [3:0];
+	
+	match_r <= nFCS ? 1'b0 : match;
+	//match_r <= match;
 end
 
 
-
 reg ack_o_r;
-reg busy_r;
 always @(posedge clk) begin
 
-	ack_o_r <= ack_o;
-	busy_r <= busy;
+	ack_o_r <= ack_o;	
 
 	if (~nIORST | nFCS) begin
 		ZorroState <= ZS_IDLE;
 		data_o <= 0;
+		stb <= 1'b0;
+		start_cycle <= 1'b0;
 	end
 
-	else
+	else begin
+	
+	  start_cycle <= match_r;
 	
 	  case (ZorroState)
 		
@@ -400,58 +419,63 @@ always @(posedge clk) begin
 		
 			stb <= 1'b0;						
 					
-			if (match & ~shutup)
-				ZorroState <= ZS_MATCH_PHASE;
-				
+			if (start_cycle & ~shutup)
+				ZorroState <= ZS_MATCH_PHASE;				
 		end
 
 		ZS_MATCH_PHASE: begin																			
+	
+			// -------------------------------------
+			// Possible READ acceleration
+			//
+			// Reads always return 32 bits, so don't wait for nDS. Also, SDRAM 32-bit cycle read takes
+			// ~100ns, so start READ cycle early upon address match, no waiting for DOE.
+			//
 
-		// ¬ариант ускорени€ дл€ READ:
-		// можно сразу запустить цикл чтени€ (stb <= 1'b1)
-		// и перейти в состо€ние ZS_WAIT_ACK. 
-		// ѕоскольку у нас чтение всегда кеширующее и возвращает
-		// всегда 32 бита, то нет смысла ждать nDS. “акже нет смысла ждать DOE, раз сам цикл контроллера
-		// SDRAM занимает около 100нс.
-			
-			//if (DOE_r & ~busy_r)
-		//	if (DOE_r)
-		//		ZorroState <= ZS_DATA_PHASE;
 		
-			if (READ & cardspace_match) begin
+			if (READ_r & cardspace_match) begin
 				stb <= 1'b1;
-				ZorroState <= ZS_WAIT_ACK;
+				ZorroState <= ZS_FAST_READ;
+				//ZorroState <= ZS_WAIT_ACK;
 			end
 			else
 				if (DOE_r)
 					ZorroState <= ZS_DATA_PHASE;
 		
+
+						
+		//	 if (DOE_r)
+		//	 	ZorroState <= ZS_DATA_PHASE;
+			
+		
 		end
+	
 	
 		ZS_DATA_PHASE: begin															
 
 			if (READ_r) begin			
 		
-				if (cardspace_match)
-					stb <= 1'b1;				
+				if (cardspace_match) stb <= 1'b1;				
 
 				// wait for data from SDRAM or Autoconfig register
 				// then go to ZS_DTACK
 		
-				if (~configured | ack_o_r) begin					
-					ZorroState <= ZS_DTACK0;
-				end
+			//	if (~configured | ack_o_r) begin		// either card not configured or data ready
+			//		ZorroState <= ZS_DTACK0;
+			//	end
+				
+			//	else
 		
-				if (cfgspace_match) begin					
-					data_o [31:0] <= {cfg_rdata [7:4], 28'hFFFFFFF};
-					ZorroState <= ZS_DTACK0;					
-				end
-				else begin
-					if (ack_o_r) begin
-						data_o [31:0] <= dat_o [31:0];
-						ZorroState <= ZS_DTACK0;
+					if (cfgspace_match) begin					
+						data_o [31:0] <= {cfg_rdata [7:4], 28'hFFFFFFF};
+						ZorroState <= ZS_DTACK0;					
 					end
-				end
+					else begin
+						if (ack_o_r) begin
+							data_o [31:0] <= dat_o [31:0];
+							ZorroState <= ZS_DTACK0;
+						end
+					end
 		
 			end
 			else /* WRITE */ begin
@@ -459,42 +483,115 @@ always @(posedge clk) begin
 				// then latch data and go to ZS_DTACK
 				
 				if (!(nDS_r [3:0] == 4'b1111)) begin
-					data [31:0] <= {AD [31:24], SD [7:0], AD [23:8]};		// for write to Autoconfig regs
-					
-					if (cardspace_match)
-						stb <= 1'b1;				
-
-					ZorroState <= ZS_WRITE_DATA;
+					data [31:0] <= {AD [31:24], SD [7:0], AD [23:8]};		// for write to Autoconfig regs					
+					ZorroState <= ZS_WRITE_DATA_STB;
 				end
 			end
 		end
 		
+
+		ZS_WRITE_DATA_STB: begin
+			if (cardspace_match) stb <= 1'b1;	
+			ZorroState <= ZS_WRITE_DATA_STB1;			
+		end
+
+		ZS_WRITE_DATA_STB1: begin
+			ZorroState <= ZS_WRITE_DATA;
+		end
+		
+		
+		//
+		// ¬озможное ускорение WRITE: после запуска цикла записи по stb не дожидатьс€ ack_o_r,
+		// а сразу переходить к формированию DTACK.
+		// NB: это не очень хорошее решение в случае, если следующий цикл шины начнетс€ раньше, чем завершитс€
+		// цикл записи в SDRAM (сформируетс€ ack_o)
+		//
+
 		ZS_WRITE_DATA: begin
+		
+
+		
+		// ********** ACHTUNG **********
+		//
+		// јхтунг, ускор€емс€. јхтунг-2: чаще возникает #80000004
+		//
+		// ZorroState <= ZS_DTACK0;
+		//
+		// ********** ACHTUNG **********
+		
+		
+			stb <= 1'b0;	
 			if (~configured | ack_o_r) begin				
-				ZorroState <= ZS_DTACK0;				
+				//ZorroState <= ZS_DTACK0;				
+				ZorroState <= ZS_DTACK;
 			end
+		
+			
 		end
 
 
+
+
+
+		ZS_FAST_READ: begin					// make stb longer
+			ZorroState <= ZS_WAIT_ACK;
+		end
+
+		
 		ZS_WAIT_ACK: begin
+			stb <= 1'b0;
+			
 			if (ack_o_r) begin
 				data_o [31:0] <= dat_o [31:0];
 				ZorroState <= ZS_DTACK0;
 			end
 		end
 	
+	
+	
 		ZS_DTACK0: begin								// to let data settle in {AD, SD}
+			stb <= 1'b0;
+			//ZorroState <= ZS_DTACK;
+			ZorroState <= ZS_DTACK1;
+		end		
+
+		ZS_DTACK1: begin						// add more time
+			stb <= 1'b0;
+			//ZorroState <= ZS_DTACK;
+			ZorroState <= ZS_DTACK2;
+		end		
+
+		ZS_DTACK2: begin						// and more; !!! FAIL !!!
+			stb <= 1'b0;
+			ZorroState <= ZS_DTACK;
+			//ZorroState <= ZS_DTACK3;
+		end		
+
+		ZS_DTACK3: begin						// and more
+			stb <= 1'b0;
+			ZorroState <= ZS_DTACK;
+			//ZorroState <= ZS_DTACK4;
+		end		
+
+		ZS_DTACK4: begin						// and more
+			stb <= 1'b0;
 			ZorroState <= ZS_DTACK;
 		end		
+
+
+
 
 		ZS_DTACK: begin					
 			stb <= 1'b0;
 		end		
-		
+
+
+
 		default: begin
 			ZorroState <= ZS_IDLE;
 		end				
 	  endcase
+	end
 end
 
 
@@ -511,82 +608,56 @@ end
 
 
 
-wire cardspace_match = (addr [31:26] == CardBaseAddr [31:26]);			// our card is being addressed (4xxx.xxxx)
-
-
-wire cfgspace_match = (addr [31:16] == 16'hFF00);						// Autoconfig configuration space is being addressed
-
-
-
-wire match = match_r; // & ~nFCS_r;
-
-reg match_r;
-always @(posedge clk) begin
-	match_r <= ~nFCS & (cardspace_match | cfgspace_match) & (FC_r [0] ^ FC_r [1]);
-end
-
-
-
-//wire select = match & (FC_r [0] ^ FC_r [1]);
-wire select = match;
-
 
 
 //
 // nSLAVEN
 //
-//assign nSLAVEN = ~select | nFCS_r | shutup; // | nCFGINN;
-assign nSLAVEN = ~select | nFCS;	// | shutup; // | nCFGINN;
+//assign nSLAVEN = nFCS | ~select;	// | shutup; // | nCFGINN;
 
 
-//
-// DTACK
-//
-reg dtack_r;
-//wire dtack = (ZorroState == ZS_DTACK);
-always @(posedge clk) begin
-	dtack_r <= zs_dtack;
-end
+//assign nSLAVEN = nFCS | zs_idle;	// 07.05.2010 Enforcer inspired
+//assign nSLAVEN = zs_idle;
+
+	//assign nSLAVEN = nFCS | ~match_r;
+	OPNDRN opndrn_nslaven (.in (nFCS | ~match_r), .out (nSLAVEN));
+
 
 //
 // nDTACK
 //
 //assign nDTACK = nFCS | ~dtack_r;
-assign nDTACK = (nFCS | ~dtack_r) ? 1'bZ : 1'b0;
+//assign nDTACK = (nFCS | ~dtack_r) ? 1'bZ : 1'b0;
+
+//assign nDTACK = nFCS | ~zs_dtack;
+
+	//assign nDTACK = ~zs_dtack;
+
+	// <data_out> may feed an inout pin
+	OPNDRN ndtck (.in(nFCS | ~zs_dtack), .out(nDTACK));
+
+
+
 //assign nDTACK = nFCS_r | !(ZorroState == ZS_DTACK);
 //assign nDTACK = nFCS_r ? 1'bZ : (ZorroState != ZS_DTACK);	// tristate
 //assign nDTACK = ~(ZorroState == ZS_DTACK);
 
 
 //wire dboe = ~nSLAVEN & DOE_r & READ_r;
-wire dboe = ~nSLAVEN & DOE & READ;
+//wire dboe = ~nSLAVEN & DOE & READ_r;
 
-/*
-//
-// Output data
-//
-always @(posedge clk) begin
-	if (READ_r) begin
-		//if (configured) begin
-		if (cardspace_match) begin
-			if (ack_o_r)
-				data_o [31:0] <= dat_o [31:0];
-		end
-		else
-			data_o [31:0] <= {cfg_rdata [7:4], 28'hFFFFFFF};
-	end
-end
-*/
+//wire dboe = ~(nFCS | ~select) & DOE & READ_r;
+
+wire dboe = ~nFCS & ~(zs_idle | zs_match) & READ_r;
 
 
-assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
+
+	assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
+	
+	//OPNDRN opndrn_ad (.in (dboe ? data_o [31:0] : 32'hFFFFFFFF), .out ({AD [31:24], SD [7:0], AD [23:8]}));
 
 
-/*
-assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? 
-								(configured ? dat_o [31:0] : (unconfigured ? {cfg_rdata [7:4], 28'bZ} : 32'bZ)) :																
-								32'bZ;
-*/
+
 
 assign nMTACK = 1'bZ;
 
@@ -598,9 +669,21 @@ wire [7:4] cfg_rdata;
 wire unconfigured, configured, shutup;
 
 
+/*
+wire zs_idle = (ZorroState == ZS_IDLE);
 wire zs_match = (ZorroState == ZS_MATCH_PHASE);
 wire zs_writedata = (ZorroState == ZS_WRITE_DATA);
 wire zs_dtack = (ZorroState == ZS_DTACK);
+*/
+reg zs_idle, zs_match, zs_writedata, zs_dtack;
+
+always @(posedge clk) begin
+	zs_idle <= (ZorroState == ZS_IDLE);
+	zs_match <= (ZorroState == ZS_MATCH_PHASE);
+	zs_writedata <= (ZorroState == ZS_WRITE_DATA);
+	zs_dtack <= (ZorroState == ZS_DTACK);
+end
+
 
 Autoconfig _Autoconfig (
 	.clk (clk),
@@ -608,11 +691,12 @@ Autoconfig _Autoconfig (
 	//.ZorroState (ZorroState [2:0]),
 	.zs_match (zs_match),
 	.zs_writedata (zs_writedata),
-	.nIORST (nIORST_r), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
+	.nIORST (nIORST), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
 	
 	.autocfg_reg (addr [8:2]),
 
 	.en (cfgspace_match),
+	
 	.rdata (cfg_rdata [7:4]), 
 	.wdata (data [15:0]),
 	
@@ -635,8 +719,6 @@ Autoconfig _Autoconfig (
 
 // assign LED[2] = cfgspace_hit;
 
-
-
 leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured), .shutup (shutup), .red_led (~red_led), .LED (LED [2:0]));
 
 
@@ -645,7 +727,7 @@ sdram_controller sdram_controller_i (
 	.clk_i (clk133), 	
 	.dram_clk_i (clk133_3),
 	//.rst_i (~nIORST), 
-	.rst_i (~nIORST_r), 
+	.rst_i (~nIORST), 
 	.dll_locked (1'b1),
 	
 	.dram_addr (SA [12:0]),
@@ -695,7 +777,7 @@ wire test_stb_i;
 
 sdram_rw sdram_rw_i (
 	.clk_i (clk), 
-	.rst_i (~nIORST_r),
+	.rst_i (~nIORST),
 	.addr_i (test_addr [31:0]),
 	.dat_i (test_dat_i [31:0]),
 	.dat_o (test_dat_o [31:0]),
@@ -710,7 +792,7 @@ sdram_rw sdram_rw_i (
 sdram_controller sdram_controller_i (
 	.clk_i (clk133), 	
 	.dram_clk_i (clk133_3),
-	.rst_i (~nIORST_r), 
+	.rst_i (~nIORST), 
 	.dll_locked (1'b1),
 	
 	.dram_addr (SA [12:0]),
