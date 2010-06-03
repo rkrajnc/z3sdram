@@ -427,6 +427,9 @@ always @(posedge clk) begin
 end
 
 
+
+reg zs_idle, zs_match, zs_writedata, zs_dtack;
+
 reg ack_o_r;
 reg dtack_r;
 reg slaven_r;
@@ -694,7 +697,7 @@ wire [7:4] cfg_rdata;
 wire unconfigured, configured, shutup;
 
 
-reg zs_idle, zs_match, zs_writedata, zs_dtack;
+
 
 always @(posedge clk) begin
 	zs_idle <= (ZorroState == ZS_IDLE);
