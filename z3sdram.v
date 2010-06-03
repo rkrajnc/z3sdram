@@ -360,6 +360,7 @@ initial begin
 	zs_dtack <= 1'b0;
 	
 	dtack_r <= 1'b0;
+	slaven_r <= 1'b0;
 	
 	
 	_match_r <= 1'b0;
@@ -428,7 +429,7 @@ end
 
 reg ack_o_r;
 reg dtack_r;
-
+reg slaven_r;
 
 always @(posedge clk) begin
 
@@ -440,7 +441,7 @@ always @(posedge clk) begin
 		stb <= 1'b0;
 		
 		dtack_r <= 1'b0;
-		
+		slaven_r <= 1'b0;
 						
 	end
 
@@ -453,7 +454,7 @@ always @(posedge clk) begin
 			stb <= 1'b0;						
 					
 			if (match_r & ~shutup) begin
-				
+				slaven_r <= 1'b1;
 				ZorroState <= ZS_MATCH_PHASE;							
 			end
 		end
@@ -601,9 +602,9 @@ always @(posedge clk) begin
 			stb <= 1'b0;
 			
 			dtack_r <= 1'b1;
-			ZorroState <= ZS_DTACK;
 			
-			//ZorroState <= ZS_DTACK2;
+			//ZorroState <= ZS_DTACK;			
+			ZorroState <= ZS_DTACK2;
 		end		
 
 		ZS_DTACK2: begin						// and more; !!! FAIL !!!
@@ -658,49 +659,27 @@ end
 //
 // nSLAVEN
 //
-//assign nSLAVEN = nFCS | ~select;	// | shutup; // | nCFGINN;
 
-
-//assign nSLAVEN = nFCS | zs_idle;	// 07.05.2010 Enforcer inspired
-//assign nSLAVEN = zs_idle;
-
-	assign nSLAVEN = nFCS | ~match_r;
-	//OPNDRN opndrn_nslaven (.in (nFCS | ~match_r), .out (nSLAVEN));	
+assign nSLAVEN = nFCS | ~slaven_r;
+//OPNDRN opndrn_nslaven (.in (nFCS | ~match_r), .out (nSLAVEN));	
 	
 
 
 //
 // nDTACK
 //
-//assign nDTACK = nFCS | ~dtack_r;
-//assign nDTACK = (nFCS | ~dtack_r) ? 1'bZ : 1'b0;
 
-//assign nDTACK = nFCS | ~zs_dtack;
-
-	//assign nDTACK = ~zs_dtack;
-
-	assign nDTACK = nFCS | ~dtack_r;
-	
-	// <data_out> may feed an inout pin
-	//OPNDRN ndtck (.in(nFCS | ~zs_dtack), .out(nDTACK));	
-	//OPNDRN ndtck (.in(nFCS | ~dtack_r), .out(nDTACK));
+assign nDTACK = nFCS | nSLAVEN | ~dtack_r;
+//OPNDRN ndtck (.in(nFCS | ~dtack_r), .out(nDTACK));
 
 
-
-
-
-//wire dboe = ~nSLAVEN & DOE_r & READ_r;
-//wire dboe = ~nSLAVEN & DOE & READ_r;
-
-//wire dboe = ~(nFCS | ~select) & DOE & READ_r;
 
 wire dboe = ~nFCS & ~(zs_idle | zs_match) & READ_r;
 
 
 
-	assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
-	
-	//OPNDRN opndrn_ad (.in (dboe ? data_o [31:0] : 32'hFFFFFFFF), .out ({AD [31:24], SD [7:0], AD [23:8]}));
+assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
+//OPNDRN opndrn_ad (.in (dboe ? data_o [31:0] : 32'hFFFFFFFF), .out ({AD [31:24], SD [7:0], AD [23:8]}));
 
 
 
@@ -715,12 +694,6 @@ wire [7:4] cfg_rdata;
 wire unconfigured, configured, shutup;
 
 
-/*
-wire zs_idle = (ZorroState == ZS_IDLE);
-wire zs_match = (ZorroState == ZS_MATCH_PHASE);
-wire zs_writedata = (ZorroState == ZS_WRITE_DATA);
-wire zs_dtack = (ZorroState == ZS_DTACK);
-*/
 reg zs_idle, zs_match, zs_writedata, zs_dtack;
 
 always @(posedge clk) begin
