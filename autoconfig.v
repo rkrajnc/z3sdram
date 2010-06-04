@@ -87,6 +87,7 @@ input [6:0] autocfg_reg;
 input [15:0] wdata;
 output reg [7:4] rdata;
 
+
 output unconfigured = (Status == PIC_UNCONFIGURED);
 output configured = (Status == PIC_CONFIGURED);
 output shutup = (Status == PIC_SHUTUP);
@@ -101,14 +102,14 @@ output reg [7:0] ec_Z3_HighByte;			// bits 31:24
 output reg [7:0] ec_BaseAddress;			// bits 23:16
 
 
-reg [1:0] Status;
-
-
-
 parameter	PIC_UNCONFIGURED 		= 2'b00;
 parameter	PIC_IN_PROGRESS			= 2'b01;
 parameter	PIC_CONFIGURED			= 2'b10;
 parameter	PIC_SHUTUP				= 2'b11;
+
+reg [1:0] Status;
+reg [1:0] next;
+
 
 //
 // Bit values for AUTOCONFIG registers
@@ -205,85 +206,97 @@ parameter	ER_MANUFACTURER_HI	= 8'h13;			// 010/110:		Manufacturer number, high b
 parameter	ER_MANUFACTURER_LO	= 8'ha6;			// 014/114:							low byte
 													//				02 02 = COMMODORE
 
+reg wrote_to_44 = 1'b0;
 
+//
+// 
+//
+always @(posedge clk or negedge nIORST)
+	if (~nIORST)	Status <= PIC_UNCONFIGURED;
+	else			Status <= next;
+	
+//
+//
+//
+always @(*) begin
+	next = 2'bx;
+	
+	case (Status)
+		PIC_UNCONFIGURED:		
+			if (wrote_to_44)	next <= PIC_CONFIGURED;
+			else				next <= PIC_UNCONFIGURED;
+		
+		PIC_CONFIGURED:			next <= PIC_CONFIGURED;
+		
+		PIC_SHUTUP:				next <= PIC_SHUTUP;
+	endcase
+end
 
+//
+// Read from Autoconfig registers
+// 
+//always @(*) begin	
+always @(posedge clk) begin	
+	rdata = 4'bx;
+	
+	if (unconfigured)
+		case ({autocfg_reg, 2'b00})
+			9'h000: 	rdata = pool_link ? ER_TYPE_POOL_LINK [7:4] : ER_TYPE [7:4];
+			9'h100: 	rdata = pool_link ? ER_TYPE_POOL_LINK [3:0] : ER_TYPE [3:0];
+				
+			9'h004: 	rdata = ~(ER_PRODUCT [7:4]);
+			9'h104: 	rdata = ~(ER_PRODUCT [3:0]);
+				
+			9'h008: 	rdata = ~(ER_FLAGS [7:4]);
+			9'h108: 	rdata = ~(ER_FLAGS [3:0]);
 
-always @(posedge clk) begin
+			9'h00c: 	rdata = ~(ER_RESERVED03 [7:4]);
+			9'h10c: 	rdata = ~(ER_RESERVED03 [3:0]);
 
+			9'h010: 	rdata = ~(ER_MANUFACTURER_HI [7:4]);
+			9'h110: 	rdata = ~(ER_MANUFACTURER_HI [3:0]);
+					
+			9'h014: 	rdata = ~(ER_MANUFACTURER_LO [7:4]);
+			9'h114: 	rdata = ~(ER_MANUFACTURER_LO [3:0]);					
+					
+			default: 	rdata = 4'b1111;					
+	endcase
+	else
+				rdata = 4'b1111;
+end
+
+//
+// Write to Autoconfig registers
+//
+always @(posedge clk or negedge nIORST) begin
+	
 	if (~nIORST) begin
-		Status <= PIC_UNCONFIGURED;
-
-		ec_BaseAddress [7:0] <= 8'h77;
 		ec_Z3_HighByte [7:0] <= 8'h77;
-		
-		
+		ec_BaseAddress [7:0] <= 8'h77;
+		wrote_to_44 <= 1'b0;
 	end
 	
 	else
 	
-	case (Status)		
-
-		PIC_SHUTUP: begin
-		end
-
-		PIC_CONFIGURED: begin
-		end
-		
-		default: begin			
-			if (en & READ & zs_match) begin
-				case ({autocfg_reg, 2'b00})
-					9'h000: rdata <= pool_link ? ER_TYPE_POOL_LINK [7:4] : ER_TYPE [7:4];
-					9'h100: rdata <= pool_link ? ER_TYPE_POOL_LINK [3:0] : ER_TYPE [3:0];
-				
-					9'h004: rdata <= ~(ER_PRODUCT [7:4]);
-					9'h104: rdata <= ~(ER_PRODUCT [3:0]);
-				
-					9'h008: rdata <= ~(ER_FLAGS [7:4]);
-					9'h108: rdata <= ~(ER_FLAGS [3:0]);
-
-					9'h00c: rdata <= ~(ER_RESERVED03 [7:4]);
-					9'h10c: rdata <= ~(ER_RESERVED03 [3:0]);
-
-					9'h010: rdata <= ~(ER_MANUFACTURER_HI [7:4]);
-					9'h110: rdata <= ~(ER_MANUFACTURER_HI [3:0]);
-					
-					9'h014: rdata <= ~(ER_MANUFACTURER_LO [7:4]);
-					9'h114: rdata <= ~(ER_MANUFACTURER_LO [3:0]);					
-					
-					default: rdata <= 4'b1111;
-					
-				endcase								
-			end
-			else
-				rdata <= 4'b1111;
-
-			if (en & ~READ & zs_writedata) begin
-				casex ({autocfg_reg, 2'b00})
-					9'hX44: begin
-						ec_Z3_HighByte <= wdata [15:8];						// 44, word access, address bits A31..A24. Actual configuration
-						//ec_BaseAddress <= nDS [1] ? ec_BaseAddress : wdata [15:8]; - somehow word access is nDS [3] == 0, nDS [2] == 0
-						//ec_BaseAddress <= nDS [2] ? ec_BaseAddress : wdata [7:0];
+	if (en & ~READ & zs_writedata & unconfigured) begin	
+		casex ({autocfg_reg, 2'b00})
+			9'hX44: begin
+						ec_Z3_HighByte [7:0] <= wdata [15:8];			// 44, word access, address bits A31..A24. Actual configuration
 						if (~nDS [2])
-							ec_BaseAddress <= wdata [7:0];
-						//ec_BaseAddress <= wdata [15:8];
-						Status <= PIC_CONFIGURED;
+							ec_BaseAddress [7:0] <= wdata [7:0];	
+						wrote_to_44 <= 1'b1;
 					end
 			
-					9'hX48: ec_BaseAddress <= wdata [7:0];					// 48, byte access, address bits A23..A16
-
-					9'hX4c: Status <= PIC_SHUTUP;								// 4c, shut up register
-				endcase
-			end
-		end				
-	endcase
-
-
-	
-
+			9'hX48: 	ec_BaseAddress <= wdata [7:0];					// 48, byte access, address bits A23..A16
+		endcase
+	end				
 end
 
+
+
 	
-assign nCFGOUTN = !(nCFGINN & ((Status == PIC_CONFIGURED) | (Status == PIC_SHUTUP)));
+//assign nCFGOUTN = !(nCFGINN & ((Status == PIC_CONFIGURED) | (Status == PIC_SHUTUP)));
+assign nCFGOUTN = nCFGINN | unconfigured;
 
 	
 endmodule
