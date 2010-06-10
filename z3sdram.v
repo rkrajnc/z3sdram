@@ -351,6 +351,32 @@ falling edge of the logically ORed data strobes; the bus master doesn’t sample /
 after the data strobes are asserted, so a slave can actually assert /DTACK any time after /FCS.
 */
 
+
+// ---------------------------
+
+reg trigger;		// GPIO [8] triggers SignalTap with CPU /BERR
+wire gpio8 = GPIO [8];
+
+
+assign red_led = trigger;
+
+/*
+always @(posedge gpio8 or negedge nIORST) begin
+	if (~nIORST)
+		trigger <= 1'b0;
+	else
+		trigger <= 1'b1;
+end
+*/
+
+parameter ONEMICROSECOND	= 10'd1000;
+reg [10:0] cntr_us;
+
+
+// ---------------------------	
+	
+	
+
 initial begin
 	ZorroState <= ZS_IDLE;
 
@@ -367,6 +393,10 @@ initial begin
 	_cfgspace_match_r <= 1'b0;
 	
 	addr [31:0] <= 32'b0;
+	
+	trigger <= 1'b0;
+	
+	cntr_us [10:0] <= 10'b0;
 end
 
 
@@ -374,7 +404,7 @@ reg nFCS_r;
 reg DOE_r;
 reg [3:0] nDS_r;
 reg [3:0] _nDS_r;
-reg [1:0] FC_r;
+//reg [1:0] FC_r;
 reg READ_r;
 
 // Lock address always in the beginning of FCS
@@ -392,7 +422,7 @@ wire cfgspace_match		= (AD [31:16] == 16'hFF00);
 
 always @(negedge nFCS) begin
 	addr [31:0] <= {AD [31:8], A [7:2], 2'b0};	
-	FC_r [1:0] <= FC [1:0];
+//	FC_r [1:0] <= FC [1:0];
 	READ_r <= READ;
 	
 	
@@ -423,10 +453,11 @@ always @(posedge clk) begin
 		
 		//match_r <= ~nFCS_r & _match_r;
 		//match_r <= nFCS ? 1'b0 : _match_r;			// for simulation, 17.05.2010
+	
 		match_r <= ~nFCS_r & _match_r;
 	
-		cardspace_match_r <= ~nFCS_r & _cardspace_match_r;
-		cfgspace_match_r <= ~nFCS_r &_cfgspace_match_r;
+		cardspace_match_r <= ~nFCS & _cardspace_match_r;
+		cfgspace_match_r <= ~nFCS &_cfgspace_match_r;
 
 		ack_o_r <= ack_o;	
 		
@@ -461,11 +492,11 @@ always @(*) begin
 	else
 	
 	case (ZorroState)
-		ZS_IDLE:		if (match_r) 	next = ZS_MATCH_PHASE;
-						else			next = ZS_IDLE;					
+		ZS_IDLE:		if (match_r)						next = ZS_MATCH_PHASE;
+						else								next = ZS_IDLE;					
 					
-		ZS_MATCH_PHASE: if (DOE_r)		next = ZS_DATA_PHASE;
-						else			next = ZS_MATCH_PHASE;												
+		ZS_MATCH_PHASE: if (DOE_r)							next = ZS_DATA_PHASE;
+						else								next = ZS_MATCH_PHASE;												
 		
 		ZS_DATA_PHASE:	if (READ_r)
 							if (cfgspace_match_r | ack_o_r)	next = ZS_DTACK0;									
@@ -474,34 +505,37 @@ always @(*) begin
 							if ((nDS_r [3:0] == 4'b1111))	next = ZS_DATA_PHASE;
 							else begin
 								data [31:0] = {AD [31:24], SD [7:0], AD [23:8]};
-								next = ZS_WRITE_DATA_STB;
+															next = ZS_WRITE_DATA_STB;
 							end
 						end
 		
-		ZS_WRITE_DATA_STB:	next = ZS_WRITE_DATA_STB1;
+		ZS_WRITE_DATA_STB:									next = ZS_WRITE_DATA_STB1;
 									
-		ZS_WRITE_DATA_STB1:	next = ZS_WRITE_DATA;
+		ZS_WRITE_DATA_STB1:									next = ZS_WRITE_DATA;
 		
 		ZS_WRITE_DATA:	if (cfgspace_match_r | ack_o_r)		next = ZS_DTACK;							
 						else								next = ZS_WRITE_DATA;						
 								
-		ZS_FAST_READ:	next = ZS_WAIT_ACK;
+	//	ZS_FAST_READ:	next = ZS_WAIT_ACK;
 		
 		ZS_WAIT_ACK:	if (ack_o_r)						next = ZS_DTACK0;
 						else 								next = ZS_WAIT_ACK;						
 		
-		ZS_DTACK0:	next = ZS_DTACK1;
+		ZS_DTACK0:	//next = ZS_DTACK1;
+															next = ZS_DTACK;
 		
-		ZS_DTACK1:	next = ZS_DTACK2;
+		ZS_DTACK1:											next = ZS_DTACK2;
 		
-		ZS_DTACK2:	next = ZS_DTACK3;
+		ZS_DTACK2:											next = ZS_DTACK3;
 		
-		ZS_DTACK3:	next = ZS_DTACK4;
+		ZS_DTACK3:											next = ZS_DTACK4;
 		
-		ZS_DTACK4:	next = ZS_DTACK;
+		ZS_DTACK4:											next = ZS_DTACK;
 		
-		ZS_DTACK: 	next = ZS_DTACK;
 		
+		
+		ZS_DTACK: 											next = ZS_DTACK;
+
 	endcase
 end
 
@@ -546,6 +580,21 @@ end
 
 
 
+always @(posedge clk) begin
+	case (ZorroState)		
+		ZS_MATCH_PHASE: begin
+			trigger <= 1'b0;
+			cntr_us [10:0] <= 10'b0;
+		end
+		ZS_DTACK: begin
+			cntr_us [10:0] <= cntr_us [10:0] + 10'b1;
+			if (cntr_us [10:0] == ONEMICROSECOND)
+				trigger <= 1'b1;
+		end
+	endcase
+end
+
+
 
 always @(posedge clk) begin
 	zs_idle_r <= (ZorroState == ZS_IDLE);
@@ -575,7 +624,8 @@ end
 // nSLAVEN
 //
 
-assign nSLAVEN = nFCS | zs_idle_r;
+//assign nSLAVEN = nFCS | zs_idle_r;
+assign nSLAVEN = nFCS | ~match_r;
 //OPNDRN opndrn_nslaven (.in (nFCS | ~match_r), .out (nSLAVEN));	
 	
 
@@ -584,8 +634,8 @@ assign nSLAVEN = nFCS | zs_idle_r;
 // nDTACK
 //
 
-assign nDTACK = nFCS | nSLAVEN | ~zs_dtack_r;
-//OPNDRN ndtck (.in(nFCS | ~dtack_r), .out(nDTACK));
+//assign nDTACK = nFCS | nSLAVEN | ~zs_dtack_r;
+OPNDRN ndtack (.in(nFCS | nSLAVEN | ~zs_dtack_r), .out(nDTACK));
 
 
 
