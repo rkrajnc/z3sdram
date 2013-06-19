@@ -48,10 +48,10 @@ expansion card capable of detecting a hardware error relating directly to that c
 /BERR when that bus error condition is detected, especially any sort of harmful hardware error
 condition. This signal is the strongest possible indicator of a bad situation, as it causes all PICs
 to get off the bus, and will usually generate a level 2 exception on the host CPU. For any
-condition that can be handled in software and doesn’t pose an immediate threat to hardware,
+condition that can be handled in software and doesnï¿½t pose an immediate threat to hardware,
 notification via a standard processor interrupt is the better choice. The bus controller will drive
 /BERR in the event of a detected bus collision or DMA error (an attempt by a bus master to
-access local bus resources it doesn’t have valid access permission for). All cards must monitor
+access local bus resources it doesnï¿½t have valid access permission for). All cards must monitor
 /BERR and be prepared to tri-state all of their on-bus output buffers whenever this signal is
 asserted. An expansion bus master will attempt to retry a cycle aborted by a single /BERR and
 notify system software in the case of two subsequent /BERR results. Since any number of
@@ -68,7 +68,8 @@ cycle as it normally would have. If the cycle is terminated by the bus master, t
 the special condition has indicated that the addressed slave is not needed, and so the cycle
 terminates without the slave being used. */
 
-input			nBERR;			// bus error
+//input			nBERR;			// bus error
+output			nBERR;
 
 
 /* System Reset (/RESET, /IORST)
@@ -86,10 +87,10 @@ input			nIORST;
 /* Backplane Type Sense (SenseZ3)
 This line can be used by the PIC to determine the backplane type. It is grounded on a
 Zorro II backplane, but floating on a Zorro III backplane. The Zorro III PIC connects this signal
-to a 1K pullup resistor to generate a real logic level for this line. It’s possible, though more
+to a 1K pullup resistor to generate a real logic level for this line. Itï¿½s possible, though more
 complicated, to build a Zorro III PIC that can actually run in Zorro II mode when in a Zorro II
-backplane. It’s hardly necessary or required to support this backward compatibility mechanism,
-and in many cases it’ll be inpractical. The Zorro III specification does require that this signal be
+backplane. Itï¿½s hardly necessary or required to support this backward compatibility mechanism,
+and in many cases itï¿½ll be inpractical. The Zorro III specification does require that this signal be
 used, at least, to shut the card down and pass /CFGIN to /CFGOUT when in a Zorro II
 backplane. */
 
@@ -106,7 +107,7 @@ $00E80000 or $FF000000 if its /CFGINN signal is asserted. All unconfigured PICs 
 /CFGOUTN negated. When configured, or told to "shut up", a PIC will assert its /CFGOUTN,
 which results in the /CFGINN of the next slot being asserted. Backplane logic automatically
 passes on the state of the previous /CFGOUTN to the next /CFGINN for any slot not occupied by
-a PIC, so there’s no need to sequentially populate the expansion bus slots. */
+a PIC, so thereï¿½s no need to sequentially populate the expansion bus slots. */
 
 input			nCFGINN;		// config in
 output			nCFGOUTN;		// config out
@@ -138,7 +139,7 @@ input			READ;
 /* Multiplexed Address Bus (A8-A31)
 These signals are driven by the bus master during address time, prior to the assertion of
 /FCS. Any responding slave must latch as many of these lines as it needs on the falling edge of
-/FCS, as they’re tri-stated very shortly after /FCS goes low. These addresses always include all
+/FCS, as theyï¿½re tri-stated very shortly after /FCS goes low. These addresses always include all
 configuration address bits for normal cycles, and the cycle type information for Quick Interrupt
 cycles. */
 
@@ -189,7 +190,7 @@ input			DOE;
 
 /* Data Bus (D0-D31)
 This is the Zorro III data bus, which is driven by either the master or the slave when DOE
-is asserted by the master (based on READ). It’s valid for reads when /DTACK is asserted by the
+is asserted by the master (based on READ). Itï¿½s valid for reads when /DTACK is asserted by the
 slave; on writes when at least one of /DSN is asserted by the master, for all cycle types. 
 
 Zorro III		Zorro III
@@ -250,7 +251,7 @@ input	[3:0]	nDS;
 /* Data Transfer Acknowledge (/DTACK)
 This signal is used to normally terminate a Zorro III cycle. The slave is always
 responsible for driving this signal. For a read cycle, it asserts /DTACK as soon as it has driven
-valid data onto the data bus. For a write cycle, it asserts /DTACK as soon as it’s done with the
+valid data onto the data bus. For a write cycle, it asserts /DTACK as soon as itï¿½s done with the
 data. Latching the data on writes may be a good idea; that can allow a slave to end the cycle
 before it has actually finished writing the data to its local memory. */
 
@@ -259,8 +260,8 @@ output			nDTACK;
 
 /* Multiple Cycle Transfers (/MTCR,/MTACK)
 These lines comprise the Multiple Transfer Cycle handshake signals. The bus master
-asserts /MTCR at the start of data time if it’s capable of supporting Multiple Transfer Cycles,
-and the slave asserts /MTACK with /SLAVEN if it’s capable of supporting Multiple Transfer
+asserts /MTCR at the start of data time if itï¿½s capable of supporting Multiple Transfer Cycles,
+and the slave asserts /MTACK with /SLAVEN if itï¿½s capable of supporting Multiple Transfer
 Cycles. If the handshake goes through, /MTCR strobes in the short address and write data as
 long as the full cycle continues. */
 
@@ -308,7 +309,9 @@ parameter 	ZS_IDLE 			= 4'b0000,
 			ZS_DTACK1			= 4'b1011,
 			ZS_DTACK2			= 4'b1100,
 			ZS_DTACK3			= 4'b1101,
-			ZS_DTACK4			= 4'b1110;
+			ZS_DTACK4			= 4'b1110,
+			
+			ZS_DTACK_ERR		= 4'b1111;
 
 reg	[3:0] ZorroState;
 reg [3:0] next;
@@ -319,7 +322,7 @@ A Zorro III cycle begins when the bus master simultaneously drives addressing in
 the address bus and memory space codes on the FCN lines, quickly following that with the
 assertion of the Full Cycle Strobe, /FCS; this is called the address phase of the bus. Any active
 slaves will latch the bus address on the falling edge of /FCS, and the bus master will tri-state the
-addressing information very shortly after /FCS is asserted. It’s necessary only to latch A31-A8;
+addressing information very shortly after /FCS is asserted. Itï¿½s necessary only to latch A31-A8;
 the low order A7-A2 addresses and FCN codes are non-multiplexed.
 
 As quickly as possible after /FCS is asserted, a slave device will respond to the bus address by
@@ -328,10 +331,10 @@ process assigns a unique address range to each PIC base on its needs, just as on
 Only one slave may respond to any given bus address; the bus controller will generate a /BERR
 signal if more than one slave responds to an address, or if a single slave responds to an address
 reserved for the local bus (this is called a bus collision, and should never happen in normal
-operation). Slaves don’t usually respond to CPU memory space or other reserved memory space
+operation). Slaves donï¿½t usually respond to CPU memory space or other reserved memory space
 types, as indicated by the memory space code on the FCN lines (see Chapter 4 for details)!
 
-The data phase is the next part of the cycle, and it’s started when the bus master asserts DOE
+The data phase is the next part of the cycle, and itï¿½s started when the bus master asserts DOE
 onto the bus, indicating that data operations can be started. The strobes are the same for both
 read and write cycles, but of course the data transfer direction is different.
 
@@ -342,25 +345,52 @@ master then terminates the cycle by negating /FCS, at which point the slave will
 /SLAVEN line and tri-state its data. The cycle is done at this point. There are a few actions that
 modify a cycle termination, those will be covered in later sections.
 
-The write cycle starts out the same way, up until DOE is asserted. At this point, it’s the master
+The write cycle starts out the same way, up until DOE is asserted. At this point, itï¿½s the master
 that must drive data onto the bus, and then assert at least one /DSN line to indicate to the slave
 that data is valid and which data bytes are being written. The slave has the data for its use until it
 terminates the cycle by asserting /DTACK, at which point the master can negate /FCS and
 tri-state its data at any point. For maximum bus bandwidth, the slave can latch data on the
-falling edge of the logically ORed data strobes; the bus master doesn’t sample /DTACK until
+falling edge of the logically ORed data strobes; the bus master doesnï¿½t sample /DTACK until
 after the data strobes are asserted, so a slave can actually assert /DTACK any time after /FCS.
 */
+
+
+// ---------------------------
+
+reg trigger;		// GPIO [8] triggers SignalTap with CPU /BERR
+wire gpio8 = GPIO [8];
+
+
+assign red_led = trigger;
+
+/*
+always @(posedge gpio8 or negedge nIORST) begin
+	if (~nIORST)
+		trigger <= 1'b0;
+	else
+		trigger <= 1'b1;
+end
+*/
+
+parameter ONEMICROSECOND	= 10'd1000;
+parameter DTACK_TIMEOUT		= 10'h30;
+reg [10:0] cntr_us;
+
+
+// ---------------------------	
+	
+	
 
 initial begin
 	ZorroState <= ZS_IDLE;
 
-	zs_idle <= 1'b0;
-	zs_match <= 1'b0;
-	zs_writedata <= 1'b0;
-	zs_dtack <= 1'b0;
-	
-	dtack_r <= 1'b0;
-	slaven_r <= 1'b0;
+	zs_idle_r <= 1'b0;
+	zs_match_r <= 1'b0;
+	zs_writedata_r <= 1'b0;
+	zs_dtack_r <= 1'b0;
+	zs_dtack_err_r <= 1'b0;
+		
+	nslaven_r <= 1'b0;
 	
 	
 	_match_r <= 1'b0;
@@ -368,6 +398,10 @@ initial begin
 	_cfgspace_match_r <= 1'b0;
 	
 	addr [31:0] <= 32'b0;
+	
+	trigger <= 1'b0;
+	
+	cntr_us [10:0] <= 10'b0;
 end
 
 
@@ -375,7 +409,7 @@ reg nFCS_r;
 reg DOE_r;
 reg [3:0] nDS_r;
 reg [3:0] _nDS_r;
-reg [1:0] FC_r;
+//reg [1:0] FC_r;
 reg READ_r;
 
 // Lock address always in the beginning of FCS
@@ -384,124 +418,29 @@ reg _match_r;
 reg _cardspace_match_r;
 reg _cfgspace_match_r;
 
-wire cardspace_match 	= AD [31:26] == CardBaseAddr [31:26];
-wire cfgspace_match		= AD [31:16] == 16'hFF00;
+wire [31:16] CardBaseAddr;
+wire [7:4] cfg_rdata;
+wire unconfigured, configured, shutup;
+
+wire cardspace_match 	= (AD [31:26] == CardBaseAddr [31:26]);
+wire cfgspace_match		= (AD [31:16] == 16'hFF00);
 
 always @(negedge nFCS) begin
 	addr [31:0] <= {AD [31:8], A [7:2], 2'b0};	
-	FC_r [1:0] <= FC [1:0];
+//	FC_r [1:0] <= FC [1:0];
 	READ_r <= READ;
 	
 	
-	_cardspace_match_r <= cardspace_match;
-	_cfgspace_match_r <= cfgspace_match;
+	_cardspace_match_r <= cardspace_match & (FC [0] ^ FC [1]);
+	_cfgspace_match_r <= cfgspace_match & (FC [0] ^ FC [1]);
 	_match_r <= (cardspace_match | cfgspace_match) & (FC [0] ^ FC [1]);
 end
 
 
-//
-// === 1 ===
-//
-always @(posedge clk or negedge nIORST or posedge nFCS) begin
-	if (!nIORST) 		ZorroState <= ZS_IDLE;
-	else if (nFCS)		ZorroState <= ZS_IDLE;
-		else			ZorroState <= next;
-end
-
-
-//
-// === 2 ===
-//
-always @(ZorroState or match_r or DOE_r or READ_r or cardspace_match_r or cfgspace_match_r or ack_o_r or nDS_r [3:0] or configured) begin
-	next = 4'bx;
-	stb = 1'b0;		
-	
-	case (ZorroState)
-		ZS_IDLE:		begin				
-							if (match_r) 	next = ZS_MATCH_PHASE;
-							else			next = ZS_IDLE;
-						end
-					
-		ZS_MATCH_PHASE: begin							
-							if (DOE_r)		next = ZS_DATA_PHASE;
-							else			next = ZS_MATCH_PHASE;						
-						end
-		
-		ZS_DATA_PHASE:	if (READ_r) begin
-							if (cardspace_match_r)
-								stb = 1'b1;
-
-							if (cfgspace_match_r) begin
-								data_o [31:0] = {cfg_rdata [7:4], 28'hFFFFFFF};
-								next = ZS_DTACK0;
-							end
-							else begin
-								if (ack_o_r) begin
-									data_o [31:0] = dat_o [31:0];
-									next = ZS_DTACK0;
-								end
-								else	next = ZS_DATA_PHASE;
-							end
-						end
-						else begin
-							if ((nDS_r [3:0] == 4'b1111))		next = ZS_DATA_PHASE;
-							else begin
-								data [31:0] = {AD [31:24], SD [7:0], AD [23:8]};
-								next = ZS_WRITE_DATA_STB;
-							end
-						end
-		
-		ZS_WRITE_DATA_STB:	begin
-								if (cardspace_match_r) stb = 1'b1;
-								next = ZS_WRITE_DATA_STB1;
-							end
-		
-		ZS_WRITE_DATA_STB1:	next = ZS_WRITE_DATA;
-		
-		ZS_WRITE_DATA:	begin
-							stb = 1'b0;
-							
-							if (~configured | ack_o_r) begin												
-								dtack_r = 1'b1;
-								next = ZS_DTACK;
-							end
-							else	next = ZS_WRITE_DATA;							
-						end
-								
-		ZS_FAST_READ:	next = ZS_WAIT_ACK;
-		
-		ZS_WAIT_ACK:	begin
-							stb = 1'b0;
-			
-							if (ack_o_r) begin
-								data_o [31:0] = dat_o [31:0];
-								next = ZS_DTACK0;
-							end
-							else next = ZS_WAIT_ACK;
-						end
-		
-		ZS_DTACK0:	next = ZS_DTACK1;
-		
-		ZS_DTACK1:	next = ZS_DTACK2;
-		
-		ZS_DTACK2:	next = ZS_DTACK3;
-		
-		ZS_DTACK3:	next = ZS_DTACK4;
-		
-		ZS_DTACK4:	next = ZS_DTACK;
-		
-		ZS_DTACK: 	next = ZS_DTACK;
-		
-	endcase
-end
-
-
-
-reg zs_idle, zs_match, zs_writedata, zs_dtack;
+reg zs_idle_r, zs_match_r, zs_writedata_r, zs_dtack_r, zs_dtack_err_r;
 
 reg ack_o_r;
-reg dtack_r;
-reg slaven_r;
+reg nslaven_r;
 
 reg match_r;
 reg cardspace_match_r;
@@ -519,21 +458,190 @@ always @(posedge clk) begin
 		
 		//match_r <= ~nFCS_r & _match_r;
 		//match_r <= nFCS ? 1'b0 : _match_r;			// for simulation, 17.05.2010
-		match_r <= _match_r;
 	
-		cardspace_match_r <= ~nFCS_r & _cardspace_match_r;
-		cfgspace_match_r <= ~nFCS_r &_cfgspace_match_r;
+		match_r <= ~nFCS_r & _match_r;
+	
+		cardspace_match_r <= ~nFCS & _cardspace_match_r;
+		cfgspace_match_r <= ~nFCS &_cfgspace_match_r;
 
 		ack_o_r <= ack_o;	
 		
 
 end
 
+
+
+
+
+//
+// === 1 ===
+//
+// 
+//
+always @(posedge clk or negedge nIORST) begin
+	if (!nIORST) 		ZorroState <= ZS_IDLE;	
+	else				ZorroState <= next;
+end
+
+
+//
+// === 2 ===
+//
+//
+//
+always @(*) begin
+	next = 4'bx;	
+	
+	if (nFCS | ~nIORST)
+		next = ZS_IDLE;
+	else
+	
+	case (ZorroState)
+		ZS_IDLE:		if (match_r)						next = ZS_MATCH_PHASE;
+						else								next = ZS_IDLE;					
+					
+		ZS_MATCH_PHASE: if (DOE_r)							next = ZS_DATA_PHASE;
+						else								next = ZS_MATCH_PHASE;												
+		
+		ZS_DATA_PHASE:	if (READ_r)
+							if (cfgspace_match_r | ack_o_r)	next = ZS_DTACK;
+							else							next = ZS_DATA_PHASE;					
+						else 
+						begin
+							if ((nDS_r [3:0] == 4'b1111))	next = ZS_DATA_PHASE;
+							else begin
+								data [31:0] = {AD [31:24], SD [7:0], AD [23:8]};
+															next = ZS_WRITE_DATA_STB;
+							end
+						end
+		
+		ZS_WRITE_DATA_STB:									//next = ZS_WRITE_DATA_STB1;
+															next = ZS_WRITE_DATA;
+									
+		//ZS_WRITE_DATA_STB1:									next = ZS_WRITE_DATA;
+		
+		ZS_WRITE_DATA:	if (cfgspace_match_r | ack_o_r)		next = ZS_DTACK;							
+															//next = ZS_DTACK0;
+						else								next = ZS_WRITE_DATA;						
+								
+	//	ZS_FAST_READ:	next = ZS_WAIT_ACK;
+		
+		ZS_WAIT_ACK:	if (ack_o_r)						next = ZS_DTACK0;
+						else 								next = ZS_WAIT_ACK;						
+		
+		ZS_DTACK0:											next = ZS_DTACK1;
+															//next = ZS_DTACK;
+		
+		ZS_DTACK1:											//next = ZS_DTACK;
+															next = ZS_DTACK2;
+		
+		ZS_DTACK2:											//next = ZS_DTACK;
+															next = ZS_DTACK3;
+		
+		ZS_DTACK3:											next = ZS_DTACK4;
+		
+		ZS_DTACK4:											next = ZS_DTACK;
+		
+		
+		
+		ZS_DTACK: 											
+					if (cntr_us [10:0] == DTACK_TIMEOUT)	next = ZS_DTACK_ERR;
+					else									next = ZS_DTACK;
+						
+		ZS_DTACK_ERR:										next = ZS_DTACK_ERR;
+
+	endcase
+end
+
+
+//
+// === 3 ===
+//
+// data_o
+//
+always @(posedge clk or negedge nIORST) begin
+	if (~nIORST) begin
+		data_o [31:0] <= 32'b0;
+	end
+	else
+	case (ZorroState)
+		ZS_DATA_PHASE: begin
+			if (cfgspace_match_r)	data_o [31:0] <= {cfg_rdata [7:4], 28'hFFFFFFF};
+			else														
+				if (ack_o_r)		data_o [31:0] <= dat_o [31:0];
+		end
+		
+		ZS_WAIT_ACK:				data_o [31:0] <= dat_o [31:0];
+	endcase	
+end
+
+//
+// === 4 ===
+//
+// stb
+//
+always @(posedge clk or negedge nIORST) begin
+	if (~nIORST) begin
+		stb <= 1'b0;
+	end
+	else
+	case (ZorroState)
+		ZS_MATCH_PHASE:		if (cardspace_match_r & READ_r)		stb <= 1'b1;				
+		ZS_WRITE_DATA_STB:	if (cardspace_match_r) 				stb <= 1'b1;
+		default:												stb <= 1'b0;
+	endcase
+end
+
+
+
+//
+// cntr_us
+//
 always @(posedge clk) begin
-	zs_idle <= (ZorroState == ZS_IDLE);
-	zs_match <= (ZorroState == ZS_MATCH_PHASE);
-	zs_writedata <= (ZorroState == ZS_WRITE_DATA);
-	zs_dtack <= (ZorroState == ZS_DTACK);
+	case (ZorroState)		
+		ZS_MATCH_PHASE: begin
+			trigger <= 1'b0;
+			cntr_us [10:0] <= 10'b0;
+		end
+		ZS_DTACK: begin
+			cntr_us [10:0] <= cntr_us [10:0] + 10'b1;
+			if (cntr_us [10:0] == DTACK_TIMEOUT)
+				trigger <= 1'b1;
+		end
+	endcase
+end
+
+
+
+always @(posedge clk) begin
+	zs_idle_r <= (ZorroState == ZS_IDLE);
+	zs_match_r <= (ZorroState == ZS_MATCH_PHASE);
+	zs_writedata_r <= (ZorroState == ZS_WRITE_DATA);
+
+	zs_dtack_r <= (ZorroState == ZS_DTACK);
+	
+	zs_dtack_err_r <= (ZorroState == ZS_DTACK_ERR);
+	
+	case (ZorroState)
+		ZS_IDLE:			nslaven_r <= 1'b1;
+		ZS_MATCH_PHASE:		nslaven_r <= 1'b0;		
+	//	ZS_DTACK_ERR:		nslaven_r <= ~nslaven_r;
+		default:			nslaven_r <= 1'b0;
+	endcase
+
+/*	
+	case (ZorroState)
+		ZS_DTACK:			zs_dtack_r <= 1'b1;
+	//	ZS_DTACK_ERR:		zs_dtack_r <= ~zs_dtack_r;
+		default:			zs_dtack_r <= 1'b0;
+	endcase
+
+
+	case (ZorroState)
+		ZS_DTACK_ERR:		zs_dtack_err_r <= 1'b1;
+		default:			zs_dtack_err_r <= 1'b0;
+	endcase
+*/
 end
 
 
@@ -557,8 +665,10 @@ end
 // nSLAVEN
 //
 
-assign nSLAVEN = nFCS | zs_idle;
+//assign nSLAVEN = nFCS | zs_idle_r;
+//assign nSLAVEN = nFCS | ~match_r;
 //OPNDRN opndrn_nslaven (.in (nFCS | ~match_r), .out (nSLAVEN));	
+OPNDRN opndrn_nslaven (.in (nFCS | nslaven_r), .out (nSLAVEN));	
 	
 
 
@@ -566,10 +676,14 @@ assign nSLAVEN = nFCS | zs_idle;
 // nDTACK
 //
 
-assign nDTACK = nFCS | nSLAVEN | ~zs_dtack;
-//OPNDRN ndtck (.in(nFCS | ~dtack_r), .out(nDTACK));
+assign nDTACK = nFCS | nSLAVEN | ~zs_dtack_r;
+//OPNDRN ndtack (.in(nFCS | nSLAVEN | ~zs_dtack_r), .out(nDTACK));
 
 
+//
+// nBERR
+//
+OPNDRN nberr (.in (nFCS | nSLAVEN | ~zs_dtack_err_r), .out (nBERR));
 
 //wire dboe = ~nFCS & ~(zs_idle | zs_match) & READ_r;
 wire dboe = ~nFCS & ~nSLAVEN & DOE & READ;
@@ -587,9 +701,6 @@ assign nMTACK = 1'bZ;
 
 
 
-wire [31:16] CardBaseAddr;
-wire [7:4] cfg_rdata;
-wire unconfigured, configured, shutup;
 
 
 
@@ -600,8 +711,8 @@ Autoconfig _Autoconfig (
 	.clk (clk),
 	
 	//.ZorroState (ZorroState [2:0]),
-	.zs_match (zs_match),
-	.zs_writedata (zs_writedata),
+	.zs_match (zs_match_r),
+	.zs_writedata (zs_writedata_r),
 	.nIORST (nIORST), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
 	
 	.autocfg_reg (addr [8:2]),
@@ -618,7 +729,7 @@ Autoconfig _Autoconfig (
 	.configured (configured),
 	.shutup (shutup),
 		
-	.READ (READ_r), 
+	.READ (READ_r),
 	.nDS (nDS_r [3:0]),
 	
 	
