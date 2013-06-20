@@ -68,8 +68,8 @@ cycle as it normally would have. If the cycle is terminated by the bus master, t
 the special condition has indicated that the addressed slave is not needed, and so the cycle
 terminates without the slave being used. */
 
-//input			nBERR;			// bus error
-output			nBERR;
+input			nBERR;			// bus error
+//output			nBERR;
 
 
 /* System Reset (/RESET, /IORST)
@@ -665,10 +665,9 @@ end
 // nSLAVEN
 //
 
-//assign nSLAVEN = nFCS | zs_idle_r;
-//assign nSLAVEN = nFCS | ~match_r;
-//OPNDRN opndrn_nslaven (.in (nFCS | ~match_r), .out (nSLAVEN));	
-OPNDRN opndrn_nslaven (.in (nFCS | nslaven_r), .out (nSLAVEN));	
+//OPNDRN opndrn_nslaven (.in (nFCS | nslaven_r), .out (nSLAVEN));
+
+assign nSLAVEN = nFCS | nslaven_r;
 	
 
 
@@ -683,19 +682,19 @@ assign nDTACK = nFCS | nSLAVEN | ~zs_dtack_r;
 //
 // nBERR
 //
-OPNDRN nberr (.in (nFCS | nSLAVEN | ~zs_dtack_err_r), .out (nBERR));
+//OPNDRN nberr (.in (nFCS | nSLAVEN | ~zs_dtack_err_r), .out (nBERR));
+
 
 //wire dboe = ~nFCS & ~(zs_idle | zs_match) & READ_r;
 wire dboe = ~nFCS & ~nSLAVEN & DOE & READ;
 
 
-
 assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
 //OPNDRN opndrn_ad (.in (dboe ? data_o [31:0] : 32'hFFFFFFFF), .out ({AD [31:24], SD [7:0], AD [23:8]}));
 
-
-
-
+//
+// nMTACK
+//
 assign nMTACK = 1'bZ;
 
 
