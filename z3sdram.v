@@ -48,10 +48,10 @@ expansion card capable of detecting a hardware error relating directly to that c
 /BERR when that bus error condition is detected, especially any sort of harmful hardware error
 condition. This signal is the strongest possible indicator of a bad situation, as it causes all PICs
 to get off the bus, and will usually generate a level 2 exception on the host CPU. For any
-condition that can be handled in software and doesn�t pose an immediate threat to hardware,
+condition that can be handled in software and doesnРїС—Р…t pose an immediate threat to hardware,
 notification via a standard processor interrupt is the better choice. The bus controller will drive
 /BERR in the event of a detected bus collision or DMA error (an attempt by a bus master to
-access local bus resources it doesn�t have valid access permission for). All cards must monitor
+access local bus resources it doesnРїС—Р…t have valid access permission for). All cards must monitor
 /BERR and be prepared to tri-state all of their on-bus output buffers whenever this signal is
 asserted. An expansion bus master will attempt to retry a cycle aborted by a single /BERR and
 notify system software in the case of two subsequent /BERR results. Since any number of
@@ -87,10 +87,10 @@ input			nIORST;
 /* Backplane Type Sense (SenseZ3)
 This line can be used by the PIC to determine the backplane type. It is grounded on a
 Zorro II backplane, but floating on a Zorro III backplane. The Zorro III PIC connects this signal
-to a 1K pullup resistor to generate a real logic level for this line. It�s possible, though more
+to a 1K pullup resistor to generate a real logic level for this line. ItРїС—Р…s possible, though more
 complicated, to build a Zorro III PIC that can actually run in Zorro II mode when in a Zorro II
-backplane. It�s hardly necessary or required to support this backward compatibility mechanism,
-and in many cases it�ll be inpractical. The Zorro III specification does require that this signal be
+backplane. ItРїС—Р…s hardly necessary or required to support this backward compatibility mechanism,
+and in many cases itРїС—Р…ll be inpractical. The Zorro III specification does require that this signal be
 used, at least, to shut the card down and pass /CFGIN to /CFGOUT when in a Zorro II
 backplane. */
 
@@ -107,7 +107,7 @@ $00E80000 or $FF000000 if its /CFGINN signal is asserted. All unconfigured PICs 
 /CFGOUTN negated. When configured, or told to "shut up", a PIC will assert its /CFGOUTN,
 which results in the /CFGINN of the next slot being asserted. Backplane logic automatically
 passes on the state of the previous /CFGOUTN to the next /CFGINN for any slot not occupied by
-a PIC, so there�s no need to sequentially populate the expansion bus slots. */
+a PIC, so thereРїС—Р…s no need to sequentially populate the expansion bus slots. */
 
 input			nCFGINN;		// config in
 output			nCFGOUTN;		// config out
@@ -139,7 +139,7 @@ input			READ;
 /* Multiplexed Address Bus (A8-A31)
 These signals are driven by the bus master during address time, prior to the assertion of
 /FCS. Any responding slave must latch as many of these lines as it needs on the falling edge of
-/FCS, as they�re tri-stated very shortly after /FCS goes low. These addresses always include all
+/FCS, as theyРїС—Р…re tri-stated very shortly after /FCS goes low. These addresses always include all
 configuration address bits for normal cycles, and the cycle type information for Quick Interrupt
 cycles. */
 
@@ -190,7 +190,7 @@ input			DOE;
 
 /* Data Bus (D0-D31)
 This is the Zorro III data bus, which is driven by either the master or the slave when DOE
-is asserted by the master (based on READ). It�s valid for reads when /DTACK is asserted by the
+is asserted by the master (based on READ). ItРїС—Р…s valid for reads when /DTACK is asserted by the
 slave; on writes when at least one of /DSN is asserted by the master, for all cycle types. 
 
 Zorro III		Zorro III
@@ -251,7 +251,7 @@ input	[3:0]	nDS;
 /* Data Transfer Acknowledge (/DTACK)
 This signal is used to normally terminate a Zorro III cycle. The slave is always
 responsible for driving this signal. For a read cycle, it asserts /DTACK as soon as it has driven
-valid data onto the data bus. For a write cycle, it asserts /DTACK as soon as it�s done with the
+valid data onto the data bus. For a write cycle, it asserts /DTACK as soon as itРїС—Р…s done with the
 data. Latching the data on writes may be a good idea; that can allow a slave to end the cycle
 before it has actually finished writing the data to its local memory. */
 
@@ -260,8 +260,8 @@ output			nDTACK;
 
 /* Multiple Cycle Transfers (/MTCR,/MTACK)
 These lines comprise the Multiple Transfer Cycle handshake signals. The bus master
-asserts /MTCR at the start of data time if it�s capable of supporting Multiple Transfer Cycles,
-and the slave asserts /MTACK with /SLAVEN if it�s capable of supporting Multiple Transfer
+asserts /MTCR at the start of data time if itРїС—Р…s capable of supporting Multiple Transfer Cycles,
+and the slave asserts /MTACK with /SLAVEN if itРїС—Р…s capable of supporting Multiple Transfer
 Cycles. If the handshake goes through, /MTCR strobes in the short address and write data as
 long as the full cycle continues. */
 
@@ -322,7 +322,7 @@ A Zorro III cycle begins when the bus master simultaneously drives addressing in
 the address bus and memory space codes on the FCN lines, quickly following that with the
 assertion of the Full Cycle Strobe, /FCS; this is called the address phase of the bus. Any active
 slaves will latch the bus address on the falling edge of /FCS, and the bus master will tri-state the
-addressing information very shortly after /FCS is asserted. It�s necessary only to latch A31-A8;
+addressing information very shortly after /FCS is asserted. ItРїС—Р…s necessary only to latch A31-A8;
 the low order A7-A2 addresses and FCN codes are non-multiplexed.
 
 As quickly as possible after /FCS is asserted, a slave device will respond to the bus address by
@@ -331,10 +331,10 @@ process assigns a unique address range to each PIC base on its needs, just as on
 Only one slave may respond to any given bus address; the bus controller will generate a /BERR
 signal if more than one slave responds to an address, or if a single slave responds to an address
 reserved for the local bus (this is called a bus collision, and should never happen in normal
-operation). Slaves don�t usually respond to CPU memory space or other reserved memory space
+operation). Slaves donРїС—Р…t usually respond to CPU memory space or other reserved memory space
 types, as indicated by the memory space code on the FCN lines (see Chapter 4 for details)!
 
-The data phase is the next part of the cycle, and it�s started when the bus master asserts DOE
+The data phase is the next part of the cycle, and itРїС—Р…s started when the bus master asserts DOE
 onto the bus, indicating that data operations can be started. The strobes are the same for both
 read and write cycles, but of course the data transfer direction is different.
 
@@ -345,12 +345,12 @@ master then terminates the cycle by negating /FCS, at which point the slave will
 /SLAVEN line and tri-state its data. The cycle is done at this point. There are a few actions that
 modify a cycle termination, those will be covered in later sections.
 
-The write cycle starts out the same way, up until DOE is asserted. At this point, it�s the master
+The write cycle starts out the same way, up until DOE is asserted. At this point, itРїС—Р…s the master
 that must drive data onto the bus, and then assert at least one /DSN line to indicate to the slave
 that data is valid and which data bytes are being written. The slave has the data for its use until it
 terminates the cycle by asserting /DTACK, at which point the master can negate /FCS and
 tri-state its data at any point. For maximum bus bandwidth, the slave can latch data on the
-falling edge of the logically ORed data strobes; the bus master doesn�t sample /DTACK until
+falling edge of the logically ORed data strobes; the bus master doesnРїС—Р…t sample /DTACK until
 after the data strobes are asserted, so a slave can actually assert /DTACK any time after /FCS.
 */
 
@@ -417,8 +417,8 @@ wire [31:16] CardBaseAddr;
 wire [7:4] cfg_rdata;
 wire unconfigured, configured, shutup;
 
-wire cardspace_match 	= (addr [31:26] == CardBaseAddr [31:26]) & ~nFCS;
-wire cfgspace_match		= (addr [31:16] == 16'hFF00) & ~nFCS;
+wire cardspace_match 	= (addr [31:26] == CardBaseAddr [31:26]) & ~nFCS_r;
+wire cfgspace_match		= (addr [31:16] == 16'hFF00) & ~nFCS_r;
 wire match					= (cardspace_match | cfgspace_match) & (FC [0] ^ FC [1]);
 
 always @(negedge nFCS) begin
@@ -657,7 +657,8 @@ end
 //OPNDRN opndrn_nslaven (.in (nFCS | nslaven_r), .out (nSLAVEN));
 
 //assign nSLAVEN = nFCS | nslaven_r;
-assign nSLAVEN = nFCS | ~match;
+//assign nSLAVEN = nFCS | ~match_r;
+assign nSLAVEN = nFCS | zs_idle_r;			// nSLAVEN driven from Zorro state machine, and qualified by nFCS
 	
 
 
