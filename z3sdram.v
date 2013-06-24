@@ -648,7 +648,7 @@ end
 
 
 
-
+		
 
 //
 // nSLAVEN
@@ -668,7 +668,8 @@ assign nSLAVEN = nFCS | zs_idle_r;			// nSLAVEN driven from Zorro state machine,
 
 //assign nDTACK = nFCS | nSLAVEN | ~zs_dtack_r;
 //OPNDRN ndtack (.in(nFCS | nSLAVEN | ~zs_dtack_r), .out(nDTACK));
-OPNDRN ndtack (.in(nFCS | nslaven_r | ~zs_dtack_r), .out(nDTACK));
+//OPNDRN ndtack (.in(nFCS | nslaven_r | ~zs_dtack_r), .out(nDTACK));
+OPNDRN ndtack (.in(nFCS | ~zs_dtack_r), .out(nDTACK));		// nDTACK also driven from Zorro state machine
 
 
 
