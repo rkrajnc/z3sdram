@@ -656,7 +656,8 @@ end
 
 //OPNDRN opndrn_nslaven (.in (nFCS | nslaven_r), .out (nSLAVEN));
 
-assign nSLAVEN = nFCS | nslaven_r;
+//assign nSLAVEN = nFCS | nslaven_r;
+assign nSLAVEN = nFCS | ~match;
 	
 
 
