@@ -1,20 +1,20 @@
 /*
 Amiga autoconfiguration is surprisingly simple. When an Amiga powers up or resets, every card
 in the system goes to its unconfigured state. At this point, the most important signals in the
-system are /CFGINN and /CFGOUTN. As long as a card’s /CFGINN line is negated, that card sits
+system are /CFGINN and /CFGOUTN. As long as a cardï¿½s /CFGINN line is negated, that card sits
 quietly and does nothing on the bus (though memory cards should continue to refresh even
-through reset, and any local board activities that don’t concern the bus may take place after
+through reset, and any local board activities that donï¿½t concern the bus may take place after
 /RESET is negated). As part of the unconfigured state, /CFGOUTN is negated by the PIC
 immediately on reset.
 
-The configuration process begins when a card’s /CFGINN line is asserted, either by the
-backplane, if it’s the first slot, or via the configuration chain, if it’s a later card. The
+The configuration process begins when a cardï¿½s /CFGINN line is asserted, either by the
+backplane, if itï¿½s the first slot, or via the configuration chain, if itï¿½s a later card. The
 configuration chain simply ensures that only one unconfigured card will see an asserted
 /CFGINN at one time. An unconfigured card that sees its /CFGINN line asserted will respond to a
 block of memory called configuration space. In this block, the PIC will assert a set of read-only
 registers, followed by a set of write-only registers (the read-only registers are also known as
-AUTOCONFIG® ROM). Starting at the base of this block, the read registers describe the
-device’s size, type, and other requirements. The operating system reads these, and based on
+AUTOCONFIGï¿½ ROM). Starting at the base of this block, the read registers describe the
+deviceï¿½s size, type, and other requirements. The operating system reads these, and based on
 them, decides what should be written to the board. Some write information is optional, but a
 board will always be assigned a base address or be told to shut up. The act of writing the final
 bit of base address, or writing anything to a shutup address, will cause the PIC to assert its
@@ -23,11 +23,11 @@ bit of base address, or writing anything to a shutup address, will cause the PIC
 The Zorro III configuration space
 is the 64K memory block beginning at $FF00xxxx, which is always driven with 32 bit Zorro III
 cycles (PICs need only decode A31-A24 during configuration). A Zorro III PIC can configure in
-Zorro II or Zorro III configuration space, at the designer’s discretion, but not both at once. All
+Zorro II or Zorro III configuration space, at the designerï¿½s discretion, but not both at once. All
 read registers physically return only the top 4 bits of data, on D31-D28 for either bus mode. Write
 registers are written to support nybble, byte, and word registers for the same register, again based
 on what works best in hardware. This design attempts to map into real hardware as simply as
-possible. Every AUTOCONFIG® register is logically considered to be 8 bits wide; the 8 bits
+possible. Every AUTOCONFIGï¿½ register is logically considered to be 8 bits wide; the 8 bits
 actually being nybbles from two paired addresses.
 
 
@@ -87,10 +87,14 @@ input [6:0] autocfg_reg;
 input [15:0] wdata;
 output reg [7:4] rdata;
 
+parameter	PIC_UNCONFIGURED 		= 2'b00;
+parameter	PIC_IN_PROGRESS			= 2'b01;
+parameter	PIC_CONFIGURED			= 2'b10;
+parameter	PIC_SHUTUP				= 2'b11;
 
-output unconfigured = (Status == PIC_UNCONFIGURED);
-output configured = (Status == PIC_CONFIGURED);
-output shutup = (Status == PIC_SHUTUP);
+output unconfigured 	= (Status == PIC_UNCONFIGURED);
+output configured 	= (Status == PIC_CONFIGURED);
+output shutup 			= (Status == PIC_SHUTUP);
 
 input pool_link;
 
@@ -100,12 +104,6 @@ input pool_link;
 // write only
 output reg [7:0] ec_Z3_HighByte;			// bits 31:24
 output reg [7:0] ec_BaseAddress;			// bits 23:16
-
-
-parameter	PIC_UNCONFIGURED 		= 2'b00;
-parameter	PIC_IN_PROGRESS			= 2'b01;
-parameter	PIC_CONFIGURED			= 2'b10;
-parameter	PIC_SHUTUP				= 2'b11;
 
 reg [1:0] Status;
 reg [1:0] next;

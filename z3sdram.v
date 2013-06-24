@@ -390,12 +390,12 @@ initial begin
 	zs_dtack_r <= 1'b0;
 	zs_dtack_err_r <= 1'b0;
 		
-	nslaven_r <= 1'b0;
+	nslaven_r <= 1'b1;
 	
 	
-	_match_r <= 1'b0;
-	_cardspace_match_r <= 1'b0;
-	_cfgspace_match_r <= 1'b0;
+	//_match_r <= 1'b0;
+	//_cardspace_match_r <= 1'b0;
+	//_cfgspace_match_r <= 1'b0;
 	
 	addr [31:0] <= 32'b0;
 	
@@ -409,31 +409,20 @@ reg nFCS_r;
 reg DOE_r;
 reg [3:0] nDS_r;
 reg [3:0] _nDS_r;
-//reg [1:0] FC_r;
-reg READ_r;
 
 // Lock address always in the beginning of FCS
 //
-reg _match_r;
-reg _cardspace_match_r;
-reg _cfgspace_match_r;
 
 wire [31:16] CardBaseAddr;
 wire [7:4] cfg_rdata;
 wire unconfigured, configured, shutup;
 
-wire cardspace_match 	= (AD [31:26] == CardBaseAddr [31:26]);
-wire cfgspace_match		= (AD [31:16] == 16'hFF00);
+wire cardspace_match 	= (addr [31:26] == CardBaseAddr [31:26]) & ~nFCS;
+wire cfgspace_match		= (addr [31:16] == 16'hFF00) & ~nFCS;
+wire match					= (cardspace_match | cfgspace_match) & (FC [0] ^ FC [1]);
 
 always @(negedge nFCS) begin
-	addr [31:0] <= {AD [31:8], A [7:2], 2'b0};	
-//	FC_r [1:0] <= FC [1:0];
-	READ_r <= READ;
-	
-	
-	_cardspace_match_r <= cardspace_match & (FC [0] ^ FC [1]);
-	_cfgspace_match_r <= cfgspace_match & (FC [0] ^ FC [1]);
-	_match_r <= (cardspace_match | cfgspace_match) & (FC [0] ^ FC [1]);
+	addr [31:0] <= {AD [31:8], A [7:2], 2'b0};		
 end
 
 
@@ -459,10 +448,10 @@ always @(posedge clk) begin
 		//match_r <= ~nFCS_r & _match_r;
 		//match_r <= nFCS ? 1'b0 : _match_r;			// for simulation, 17.05.2010
 	
-		match_r <= ~nFCS_r & _match_r;
+		match_r <= ~nFCS_r & match;
 	
-		cardspace_match_r <= ~nFCS & _cardspace_match_r;
-		cfgspace_match_r <= ~nFCS &_cfgspace_match_r;
+		cardspace_match_r <= ~nFCS & cardspace_match;
+		cfgspace_match_r <= ~nFCS & cfgspace_match;
 
 		ack_o_r <= ack_o;	
 		
@@ -503,7 +492,7 @@ always @(*) begin
 		ZS_MATCH_PHASE: if (DOE_r)							next = ZS_DATA_PHASE;
 						else								next = ZS_MATCH_PHASE;												
 		
-		ZS_DATA_PHASE:	if (READ_r)
+		ZS_DATA_PHASE:	if (READ)
 							if (cfgspace_match_r | ack_o_r)	next = ZS_DTACK;
 							else							next = ZS_DATA_PHASE;					
 						else 
@@ -586,7 +575,7 @@ always @(posedge clk or negedge nIORST) begin
 	end
 	else
 	case (ZorroState)
-		ZS_MATCH_PHASE:		if (cardspace_match_r & READ_r)		stb <= 1'b1;				
+		ZS_MATCH_PHASE:		if (cardspace_match_r & READ)		stb <= 1'b1;				
 		ZS_WRITE_DATA_STB:	if (cardspace_match_r) 				stb <= 1'b1;
 		default:												stb <= 1'b0;
 	endcase
@@ -675,8 +664,10 @@ assign nSLAVEN = nFCS | nslaven_r;
 // nDTACK
 //
 
-assign nDTACK = nFCS | nSLAVEN | ~zs_dtack_r;
+//assign nDTACK = nFCS | nSLAVEN | ~zs_dtack_r;
 //OPNDRN ndtack (.in(nFCS | nSLAVEN | ~zs_dtack_r), .out(nDTACK));
+OPNDRN ndtack (.in(nFCS | nslaven_r | ~zs_dtack_r), .out(nDTACK));
+
 
 
 //
@@ -686,7 +677,8 @@ assign nDTACK = nFCS | nSLAVEN | ~zs_dtack_r;
 
 
 //wire dboe = ~nFCS & ~(zs_idle | zs_match) & READ_r;
-wire dboe = ~nFCS & ~nSLAVEN & DOE & READ;
+//wire dboe = ~nFCS & ~nSLAVEN & DOE & READ;
+wire dboe = ~nFCS & ~nSLAVEN & DOE & READ & nBERR;
 
 
 assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
@@ -728,7 +720,7 @@ Autoconfig _Autoconfig (
 	.configured (configured),
 	.shutup (shutup),
 		
-	.READ (READ_r),
+	.READ (READ),
 	.nDS (nDS_r [3:0]),
 	
 	
@@ -772,7 +764,7 @@ sdram_controller sdram_controller_i (
 
 	.ack_o (ack_o),
 	.stb_i (stb),	
-	.we_i (~READ_r),
+	.we_i (~READ),
 	
 	.busy (busy)
 	
