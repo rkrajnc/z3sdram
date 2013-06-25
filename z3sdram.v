@@ -417,12 +417,14 @@ wire [31:16] CardBaseAddr;
 wire [7:4] cfg_rdata;
 wire unconfigured, configured, shutup;
 
-wire cardspace_match 	= (addr [31:26] == CardBaseAddr [31:26]) /* & ~nFCS_r */;
-wire cfgspace_match		= (addr [31:16] == 16'hFF00) /* & ~nFCS_r */;
-wire match					= (cardspace_match | cfgspace_match) & (FC [0] ^ FC [1]) /* & ~nFCS_r */;
+wire cardspace_match 	= (AD [31:26] == CardBaseAddr [31:26]) /* & ~nFCS_r */;
+wire cfgspace_match		= (AD [31:16] == 16'hFF00) /* & ~nFCS_r */;
+wire match					= (cardspace_match_r | cfgspace_match_r) & (FC [0] ^ FC [1]) & ~nFCS;
 
 always @(negedge nFCS) begin
-	addr [31:0] <= {AD [31:8], A [7:2], 2'b0};		
+	addr [31:0] <= {AD [31:8], A [7:2], 2'b0};
+	cardspace_match_r <= cardspace_match;
+	cfgspace_match_r <= cfgspace_match;
 end
 
 
@@ -451,8 +453,8 @@ always @(posedge clk) begin
 		//match_r <= ~nFCS_r & match;
 		match_r <= match & ~nFCS_r;
 	
-		cardspace_match_r <= cardspace_match & ~nFCS;
-		cfgspace_match_r <= cfgspace_match & ~nFCS;
+	//	cardspace_match_r <= cardspace_match & ~nFCS;
+	//	cfgspace_match_r <= cfgspace_match & ~nFCS;
 
 		ack_o_r <= ack_o;	
 		
@@ -681,6 +683,7 @@ end
 //assign nSLAVEN = nFCS | zs_idle_r;			// nSLAVEN driven from Zorro state machine, and qualified by nFCS
 //assign nSLAVEN = nFCS | ~match_r;
 assign nSLAVEN = nFCS | ~(cardspace_match_r | cfgspace_match_r);
+
 	
 
 
