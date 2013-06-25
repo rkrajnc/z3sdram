@@ -363,14 +363,14 @@ wire gpio8 = GPIO [8];
 
 assign red_led = trigger;
 
-/*
-always @(posedge gpio8 or negedge nIORST) begin
+
+always @(negedge nBERR or negedge nIORST) begin
 	if (~nIORST)
 		trigger <= 1'b0;
-	else
+	else		
 		trigger <= 1'b1;
 end
-*/
+
 
 parameter ONEMICROSECOND	= 10'd1000;
 parameter DTACK_TIMEOUT		= 10'h30;
@@ -597,13 +597,13 @@ end
 always @(posedge clk) begin
 	case (ZorroState)		
 		ZS_MATCH_PHASE: begin
-			trigger <= 1'b0;
+			//trigger <= 1'b0;
 			cntr_us [10:0] <= 10'b0;
 		end
 		ZS_DTACK: begin
 			cntr_us [10:0] <= cntr_us [10:0] + 10'b1;
-			if (cntr_us [10:0] == DTACK_TIMEOUT)
-				trigger <= 1'b1;
+	//		if (cntr_us [10:0] == DTACK_TIMEOUT)
+	//			trigger <= 1'b1;
 		end
 	endcase
 end
