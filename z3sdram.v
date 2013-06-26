@@ -383,15 +383,7 @@ reg [10:0] cntr_us;
 
 initial begin
 	ZorroState <= ZS_IDLE;
-
-	zs_idle_r <= 1'b0;
-	zs_match_r <= 1'b0;
-	zs_writedata_r <= 1'b0;
-	zs_dtack_r <= 1'b0;
-	zs_dtack_err_r <= 1'b0;
-		
-	
-	
+			
 	
 	//_match_r <= 1'b0;
 	//_cardspace_match_r <= 1'b0;
@@ -429,7 +421,7 @@ always @(negedge nFCS) begin
 end
 
 
-reg zs_idle_r, zs_match_r, zs_writedata_r, zs_dtack_r, zs_dtack_err_r, zs_data_phase_r;
+
 
 reg ack_o_r;
 
@@ -588,15 +580,19 @@ end
 // stb
 //
 always @(posedge clk or negedge nIORST) begin
-	if (~nIORST) begin
-		stb <= 1'b0;
-	end
+	if (~nIORST)
+		stb <= 1'b0;	
 	else
-	case (ZorroState)
-		ZS_MATCH_PHASE:		if (cardspace_match_r & READ)		stb <= 1'b1;				
-		ZS_WRITE_DATA_STB:	if (cardspace_match_r) 				stb <= 1'b1;
-		default:												stb <= 1'b0;
-	endcase
+		case (ZorroState)
+			ZS_MATCH_PHASE:		
+				if (cardspace_match_r & READ)		
+					stb <= 1'b1;
+			ZS_WRITE_DATA_STB:	
+				if (cardspace_match_r) 				
+					stb <= 1'b1;
+			default:										
+				stb <= 1'b0;
+		endcase
 end
 
 
@@ -633,35 +629,10 @@ wire zs_data_phase = (ZorroState == ZS_DATA_PHASE) |
 								(ZorroState == ZS_DTACK2) |
 								(ZorroState == ZS_DTACK3) |
 								(ZorroState == ZS_DTACK4);
+wire zs_writedata = (ZorroState == ZS_WRITE_DATA);								
+								
 wire zs_dtack = (ZorroState == ZS_DTACK);
 
-always @(posedge clk) begin
-	zs_idle_r <= zs_idle;
-	zs_match_r <= zs_match;
-	zs_writedata_r <= (ZorroState == ZS_WRITE_DATA);
-
-	zs_dtack_r <= 	zs_dtack;
-	
-	zs_dtack_err_r <= (ZorroState == ZS_DTACK_ERR);
-	
-	zs_data_phase_r <= zs_data_phase;
-
-
-
-/*	
-	case (ZorroState)
-		ZS_DTACK:			zs_dtack_r <= 1'b1;
-	//	ZS_DTACK_ERR:		zs_dtack_r <= ~zs_dtack_r;
-		default:			zs_dtack_r <= 1'b0;
-	endcase
-
-
-	case (ZorroState)
-		ZS_DTACK_ERR:		zs_dtack_err_r <= 1'b1;
-		default:			zs_dtack_err_r <= 1'b0;
-	endcase
-*/
-end
 
 
 
@@ -702,7 +673,7 @@ assign nSLAVEN = nFCS | ~(cardspace_match_r | cfgspace_match_r) | ~(FC [0] ^ FC 
 //assign nDTACK = nFCS | nSLAVEN | ~zs_dtack_r;
 //OPNDRN ndtack (.in(nFCS | nSLAVEN | ~zs_dtack_r), .out(nDTACK));
 //OPNDRN ndtack (.in(nFCS | nslaven_r | ~zs_dtack_r), .out(nDTACK));
-OPNDRN ndtack (.in(nFCS | ~zs_dtack_r), .out(nDTACK));		// nDTACK also driven from Zorro state machine
+OPNDRN ndtack (.in(nFCS | ~zs_dtack), .out(nDTACK));		// nDTACK also driven from Zorro state machine
 
 
 
@@ -739,8 +710,8 @@ Autoconfig _Autoconfig (
 	.clk (clk),
 	
 	//.ZorroState (ZorroState [2:0]),
-	.zs_match (zs_match_r),
-	.zs_writedata (zs_writedata_r),
+	.zs_match (zs_match),
+	.zs_writedata (zs_writedata),
 	.nIORST (nIORST), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
 	
 	.autocfg_reg (addr [8:2]),
