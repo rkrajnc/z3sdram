@@ -40,6 +40,7 @@ output	[2:0]	LED;
 input	[8:2]	GPIO;
 
 
+
 // Zorro III
 
 /* Hardware Bus Error/Interrupt (/BERR)
@@ -385,9 +386,9 @@ initial begin
 	ZorroState <= ZS_IDLE;
 			
 	
-	//_match_r <= 1'b0;
-	//_cardspace_match_r <= 1'b0;
-	//_cfgspace_match_r <= 1'b0;
+	match_r <= 1'b0;
+	cardspace_match_r <= 1'b0;
+	cfgspace_match_r <= 1'b0;
 	
 	addr [31:0] <= 32'b0;
 	
@@ -477,17 +478,21 @@ always @(*) begin
 	next = 4'bx;		// ???
 	
 	if (nFCS | ~nIORST)		// TODO keep an eye at /BERR also
+	begin
 		next = ZS_IDLE;
+	end
 	else
 	
 	
 	
 	case (ZorroState)
-		ZS_IDLE:		
-			if (match_r)						
-				next = ZS_MATCH_PHASE;
-			else								
-				next = ZS_IDLE;					
+		ZS_IDLE:
+			begin
+				if (match_r)						
+					next = ZS_MATCH_PHASE;
+				else								
+					next = ZS_IDLE;					
+			end
 					
 		ZS_MATCH_PHASE: 
 			if (DOE_r)							
@@ -671,8 +676,8 @@ wire zs_dtack = (ZorroState == ZS_DTACK);
 //assign nSLAVEN = nFCS | ~match_r;
 assign nSLAVEN = nFCS | ~(cardspace_match_r | cfgspace_match_r) | ~(FC [0] ^ FC [1]) | nCFGINN;
 
-	
 
+	
 
 //
 // nDTACK
@@ -681,7 +686,12 @@ assign nSLAVEN = nFCS | ~(cardspace_match_r | cfgspace_match_r) | ~(FC [0] ^ FC 
 //assign nDTACK = nFCS | nSLAVEN | ~zs_dtack_r;
 //OPNDRN ndtack (.in(nFCS | nSLAVEN | ~zs_dtack_r), .out(nDTACK));
 //OPNDRN ndtack (.in(nFCS | nslaven_r | ~zs_dtack_r), .out(nDTACK));
-OPNDRN ndtack (.in(nFCS | ~zs_dtack), .out(nDTACK));		// nDTACK also driven from Zorro state machine
+//OPNDRN ndtack (.in(nFCS | ~zs_dtack), .out(nDTACK));		// nDTACK also driven from Zorro state machine
+
+// --- Prometheus
+//OPNDRN ndtack (.in(nFCS | ~zs_dtack | nSLAVEN), .out(nDTACK));
+assign nDTACK = nFCS | ~zs_dtack | nSLAVEN;		// for external 74lvc1g07 chip or for direct (non-opendrain) control
+
 
 
 
@@ -696,7 +706,7 @@ OPNDRN ndtack (.in(nFCS | ~zs_dtack), .out(nDTACK));		// nDTACK also driven from
 //wire dboe = ~nFCS & ~nSLAVEN & DOE & READ & nBERR;
 //wire dboe = ~nFCS & (zs_data_phase | zs_dtack) & READ & nBERR;
 
-// Prometheus
+// --- Prometheus
 wire dboe = ~nSLAVEN & DOE & READ & nBERR;
 
 
@@ -707,8 +717,6 @@ assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
 // nMTACK
 //
 assign nMTACK = 1'bZ;
-
-
 
 
 
