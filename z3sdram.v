@@ -574,11 +574,13 @@ always @(posedge clk or negedge nIORST) begin
 	endcase	
 end
 
+
 //
 // === 4 ===
 //
 // stb
 //
+/*
 always @(posedge clk or negedge nIORST) begin
 	if (~nIORST)
 		stb <= 1'b0;	
@@ -594,6 +596,11 @@ always @(posedge clk or negedge nIORST) begin
 				stb <= 1'b0;
 		endcase
 end
+*/
+
+wire stb = READ ? zs_match : zs_write_data_stb;
+
+
 
 
 
@@ -629,7 +636,8 @@ wire zs_data_phase = (ZorroState == ZS_DATA_PHASE) |
 								(ZorroState == ZS_DTACK2) |
 								(ZorroState == ZS_DTACK3) |
 								(ZorroState == ZS_DTACK4);
-wire zs_writedata = (ZorroState == ZS_WRITE_DATA);								
+wire zs_writedata = (ZorroState == ZS_WRITE_DATA);
+wire zs_write_data_stb = (ZorroState == ZS_WRITE_DATA_STB);
 								
 wire zs_dtack = (ZorroState == ZS_DTACK);
 
@@ -686,7 +694,10 @@ OPNDRN ndtack (.in(nFCS | ~zs_dtack), .out(nDTACK));		// nDTACK also driven from
 //wire dboe = ~nFCS & ~(zs_idle | zs_match) & READ_r;
 //wire dboe = ~nFCS & ~nSLAVEN & DOE & READ;
 //wire dboe = ~nFCS & ~nSLAVEN & DOE & READ & nBERR;
-wire dboe = ~nFCS & (zs_data_phase | zs_dtack) & READ & nBERR;
+//wire dboe = ~nFCS & (zs_data_phase | zs_dtack) & READ & nBERR;
+
+// Prometheus
+wire dboe = ~nSLAVEN & DOE & READ & nBERR;
 
 
 assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
@@ -849,7 +860,7 @@ sdram_controller sdram_controller_i (
 wire [31:0] dat_o;
 wire we_i;
 wire ack_o;
-reg stb;
+//reg stb;
 
 wire red_led;
 wire busy;
