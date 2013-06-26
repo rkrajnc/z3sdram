@@ -390,7 +390,7 @@ initial begin
 	zs_dtack_r <= 1'b0;
 	zs_dtack_err_r <= 1'b0;
 		
-	//nslaven_r <= 1'b1;
+	
 	
 	
 	//_match_r <= 1'b0;
@@ -409,6 +409,7 @@ reg nFCS_r;
 reg DOE_r;
 reg [3:0] nDS_r;
 reg [3:0] _nDS_r;
+
 
 // Lock address always in the beginning of FCS
 //
@@ -431,7 +432,7 @@ end
 reg zs_idle_r, zs_match_r, zs_writedata_r, zs_dtack_r, zs_dtack_err_r, zs_data_phase_r;
 
 reg ack_o_r;
-//reg nslaven_r;
+
 
 reg match_r;
 reg cardspace_match_r;
@@ -631,14 +632,7 @@ always @(posedge clk) begin
 								(ZorroState == ZS_DTACK3) |
 								(ZorroState == ZS_DTACK4);
 
-/*	
-	case (ZorroState)
-		ZS_IDLE:			nslaven_r <= 1'b1;
-		ZS_MATCH_PHASE:		nslaven_r <= 1'b0;		
-	//	ZS_DTACK_ERR:		nslaven_r <= ~nslaven_r;
-		default:			nslaven_r <= 1'b0;
-	endcase
-*/
+
 
 /*	
 	case (ZorroState)
@@ -682,7 +676,7 @@ end
 //assign nSLAVEN = nFCS | ~match_r;
 //assign nSLAVEN = nFCS | zs_idle_r;			// nSLAVEN driven from Zorro state machine, and qualified by nFCS
 //assign nSLAVEN = nFCS | ~match_r;
-assign nSLAVEN = nFCS | ~(cardspace_match_r | cfgspace_match_r);
+assign nSLAVEN = nFCS | ~(cardspace_match_r | cfgspace_match_r) | ~(FC [0] ^ FC [1]);
 
 	
 
