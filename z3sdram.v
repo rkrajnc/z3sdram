@@ -295,24 +295,24 @@ reg [31:0] data_o;
 reg [8:0] autocfg_reg;
 
 
-parameter 	ZS_IDLE 			= 4'b0000,										// 0000000000000001
-			ZS_MATCH_PHASE 		= 4'b0001,									// 0000000000000010
-			ZS_DATA_PHASE 		= 4'b0010,										// 0000000000000100
-			ZS_DTACK 			= 4'b0011,										// 0000000000001000
-			ZS_WRITE_DATA		= 4'b0100,										// 0000000000010000
-			ZS_WAIT_ACK			= 4'b0101,										// 0000000000100000
-			ZS_DTACK0			= 4'b0110,										// 0000000001000000
-			ZS_WRITE_DATA_STB	= 4'b0111,										// 0000000010000000
-			ZS_READ_STB			= 4'b1000,										// 0000000100000000
-			ZS_FAST_READ		= 4'b1001,										// 0000001000000000
-			ZS_WRITE_DATA_STB1	= 4'b1010,									// 0000010000000000
+parameter 	ZS_IDLE 			= 5'b00000,										// 0000000000000001
+			ZS_MATCH_PHASE 		= 5'b00001,									// 0000000000000010
+			ZS_DATA_PHASE 		= 5'b00010,										// 0000000000000100
+			ZS_DTACK 			= 5'b00011,										// 0000000000001000
+			ZS_WRITE_DATA		= 5'b00100,										// 0000000000010000
+			ZS_WAIT_ACK			= 5'b00101,										// 0000000000100000
+			ZS_DTACK0			= 5'b00110,										// 0000000001000000
+			ZS_WRITE_DATA_STB	= 5'b00111,										// 0000000010000000
+			ZS_READ_STB			= 5'b01000,										// 0000000100000000
+			ZS_FAST_READ		= 5'b01001,										// 0000001000000000
+			ZS_WRITE_DATA_STB1	= 5'b01010,									// 0000010000000000
 			
-			ZS_DTACK1			= 4'b1011,										// 0000100000000000
-			ZS_DTACK2			= 4'b1100,										// 0001000000000000
-			ZS_DTACK3			= 4'b1101,										// 0010000000000000
-			ZS_DTACK4			= 4'b1110,										// 0100000000000000
+			ZS_DTACK1			= 5'b01011,										// 0000100000000000
+			ZS_DTACK2			= 5'b01100,										// 0001000000000000
+			ZS_DTACK3			= 5'b01101,										// 0010000000000000
+			ZS_DTACK4			= 5'b01110,										// 0100000000000000
 			
-			ZS_DTACK_ERR		= 4'b1111;										// 1000000000000000
+			ZS_DTACK_ERR		= 5'b01111;										// 1000000000000000
 
 reg	[3:0] ZorroState;
 reg [3:0] next;
@@ -399,6 +399,7 @@ end
 
 
 reg nFCS_r;
+reg _nFCS_r;			// nFCS_r delayed by 1 clock, to delay tristating of DTACK
 reg DOE_r;
 reg [3:0] nDS_r;
 reg [3:0] _nDS_r;
@@ -434,6 +435,7 @@ reg cfgspace_match_r;
 always @(posedge clk) begin	
 
 		nFCS_r <= nFCS;
+		_nFCS_r <= nFCS_r;
 	
 		DOE_r <= DOE;	
 	
@@ -690,8 +692,8 @@ assign nSLAVEN = nFCS | ~(cardspace_match_r | cfgspace_match_r) | ~(FC [0] ^ FC 
 
 // --- Prometheus
 //OPNDRN ndtack (.in(nFCS | ~zs_dtack | nSLAVEN), .out(nDTACK));
-assign nDTACK = nFCS | ~zs_dtack | nSLAVEN;		// for external 74lvc1g07 chip or for direct (non-opendrain) control
-
+//assign nDTACK = nFCS | ~zs_dtack | nSLAVEN;		// for external 74lvc1g07 chip or for direct (non-opendrain) control
+ALT_OUTBUF_TRI ndtack (.i (nFCS | ~zs_dtack | nSLAVEN), .oe (~_nFCS_r), .o (nDTACK));
 
 
 
