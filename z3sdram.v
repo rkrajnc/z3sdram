@@ -295,26 +295,26 @@ reg [31:0] data_o;
 reg [8:0] autocfg_reg;
 
 
-parameter 	ZS_IDLE 			= 5'b00000,										// 0000000000000001
-			ZS_MATCH_PHASE 		= 5'b00001,									// 0000000000000010
-			ZS_DATA_PHASE 		= 5'b00010,										// 0000000000000100
-			ZS_DTACK 			= 5'b00011,										// 0000000000001000
-			ZS_WRITE_DATA		= 5'b00100,										// 0000000000010000
-			ZS_WAIT_ACK			= 5'b00101,										// 0000000000100000
-			ZS_DTACK0			= 5'b00110,										// 0000000001000000
-			ZS_WRITE_DATA_STB	= 5'b00111,										// 0000000010000000
-			ZS_READ_STB			= 5'b01000,										// 0000000100000000
-			ZS_FAST_READ		= 5'b01001,										// 0000001000000000
+parameter 	ZS_IDLE 				= 5'b00000,										// 0000000000000001
+			ZS_MATCH_PHASE 		= 5'b00001,										// 0000000000000010
+			ZS_DATA_PHASE 			= 5'b00010,										// 0000000000000100
+			ZS_DTACK 				= 5'b00011,										// 0000000000001000
+			ZS_WRITE_DATA			= 5'b00100,										// 0000000000010000
+			ZS_WAIT_ACK				= 5'b00101,										// 0000000000100000
+			ZS_DTACK0				= 5'b00110,										// 0000000001000000
+			ZS_WRITE_DATA_STB		= 5'b00111,										// 0000000010000000
+			ZS_READ_STB				= 5'b01000,										// 0000000100000000
+			ZS_FAST_READ			= 5'b01001,										// 0000001000000000
 			ZS_WRITE_DATA_STB1	= 5'b01010,									// 0000010000000000
 			
-			ZS_DTACK1			= 5'b01011,										// 0000100000000000
-			ZS_DTACK2			= 5'b01100,										// 0001000000000000
-			ZS_DTACK3			= 5'b01101,										// 0010000000000000
-			ZS_DTACK4			= 5'b01110,										// 0100000000000000
+			ZS_DTACK1				= 5'b01011,										// 0000100000000000
+			ZS_DTACK2				= 5'b01100,										// 0001000000000000
+			ZS_DTACK3				= 5'b01101,										// 0010000000000000
+			ZS_DTACK4				= 5'b01110,										// 0100000000000000
 			
-			ZS_DTACK_ERR		= 5'b01111;										// 1000000000000000
+			ZS_DTACK_ERR			= 5'b01111;										// 1000000000000000
 
-reg	[3:0] ZorroState;
+reg [3:0] ZorroState;
 reg [3:0] next;
 
 
@@ -732,8 +732,7 @@ assign nMTACK = 1'bZ;
 
 Autoconfig _Autoconfig (
 	.clk (clk),
-	
-	//.ZorroState (ZorroState [2:0]),
+		
 	.zs_match (zs_match),
 	.zs_writedata (zs_writedata),
 	.nIORST (nIORST), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
@@ -770,8 +769,7 @@ leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured),
 
 sdram_controller sdram_controller_i (
 	.clk_i (clk133), 	
-	.dram_clk_i (clk133_3),
-	//.rst_i (~nIORST), 
+	.dram_clk_i (clk133_3),	
 	.rst_i (~nIORST), 
 	.dll_locked (1'b1),
 	
@@ -873,7 +871,7 @@ sdram_controller sdram_controller_i (
 wire [31:0] dat_o;
 wire we_i;
 wire ack_o;
-//reg stb;
+
 
 wire red_led;
 wire busy;

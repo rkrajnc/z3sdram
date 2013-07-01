@@ -116,7 +116,7 @@ reg [1:0] next;
 //
 // Register 00 (er_Type)
 //
-parameter	AC_PIC_TYPE_ZORROIII		= 2'b10;
+parameter	AC_PIC_TYPE_ZORROIII			= 2'b10;
 parameter	AC_PIC_TYPE_ZORROII			= 2'b11;
 parameter	AC_SYSTEM_POOL_NO_LINK		= 1'b0;
 parameter	AC_SYSTEM_POOL_LINK			= 1'b1;
@@ -127,11 +127,11 @@ parameter	AC_NEXT_BOART_NOT_RELATED	= 1'b0;
 
 parameter	AC_CONFSIZE_8M_16M			= 3'b000;
 parameter	AC_CONFSIZE_64K_32M			= 3'b001;
-parameter	AC_CONFSIZE_128K_64M		= 3'b010;
+parameter	AC_CONFSIZE_128K_64M			= 3'b010;
 parameter	AC_CONFSIZE_256K_128M		= 3'b011;
 parameter	AC_CONFSIZE_512K_256M		= 3'b100;
 parameter	AC_CONFSIZE_1M_512M			= 3'b101;
-parameter	AC_CONFSIZE_2M_1G			= 3'b110;
+parameter	AC_CONFSIZE_2M_1G				= 3'b110;
 parameter	AC_CONFSIZE_4M_RESERVED		= 3'b111;
 
 
@@ -145,8 +145,8 @@ parameter	AC_SHUTUP					= 1'b0;
 parameter	AC_EXTENDED_SIZE			= 1'b1;
 parameter	AC_NORMAL_SIZE				= 1'b0;
 parameter	AC_SUBSIZE_MATCH_PHYSICAL	= 4'b0000;
-parameter	AC_SUBSIZE_AUTOSIZED		= 4'b0001;
-parameter	AC_SUBSIZE_64K				= 4'b0010;
+parameter	AC_SUBSIZE_AUTOSIZED			= 4'b0001;
+parameter	AC_SUBSIZE_64K					= 4'b0010;
 parameter	AC_SUBSIZE_128K				= 4'b0011;
 parameter	AC_SUBSIZE_256K				= 4'b0100;
 
@@ -209,9 +209,12 @@ reg wrote_to_44 = 1'b0;
 //
 // 
 //
-always @(posedge clk or negedge nIORST)
-	if (~nIORST)	Status <= PIC_UNCONFIGURED;
-	else			Status <= next;
+always @(posedge clk or negedge nIORST) begin
+	if (~nIORST)	
+		Status <= PIC_UNCONFIGURED;
+	else			
+		Status <= next;
+end
 	
 //
 //
