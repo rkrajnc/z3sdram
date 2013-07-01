@@ -50,7 +50,6 @@ module Autoconfig (
 	
 	clk,
 	
-	zs_match,
 	zs_writedata,
 	
 	nIORST,
@@ -67,14 +66,15 @@ module Autoconfig (
 
 	
 	ec_BaseAddress, ec_Z3_HighByte,
+	ec_Z3_HighByte_board_01, ec_BaseAddress_board_01,
 	
 	unconfigured, configured, shutup,
 	
 	pool_link
+	
 );
 
 input clk;
-input zs_match;
 input zs_writedata;
 input nIORST;
 input nCFGINN;
@@ -105,8 +105,14 @@ input pool_link;
 output reg [7:0] ec_Z3_HighByte;			// bits 31:24
 output reg [7:0] ec_BaseAddress;			// bits 23:16
 
+output reg [7:0] ec_Z3_HighByte_board_01;			// bits 31:24
+output reg [7:0] ec_BaseAddress_board_01;			// bits 23:16
+
+
 reg [1:0] Status;
 reg [1:0] next;
+
+reg [1:0] board;		// up to 4 logical boards
 
 
 //
@@ -123,7 +129,7 @@ parameter	AC_SYSTEM_POOL_LINK			= 1'b1;
 parameter	AC_AUTOBOOT_ROM				= 1'b1;
 parameter	AC_NO_AUTOBOOT_ROM			= 1'b0;
 parameter	AC_NEXT_BOARD_RELATED		= 1'b1;
-parameter	AC_NEXT_BOART_NOT_RELATED	= 1'b0;
+parameter	AC_NEXT_BOARD_NOT_RELATED	= 1'b0;
 
 parameter	AC_CONFSIZE_8M_16M			= 3'b000;
 parameter	AC_CONFSIZE_64K_32M			= 3'b001;
@@ -138,12 +144,12 @@ parameter	AC_CONFSIZE_4M_RESERVED		= 3'b111;
 //
 // Register 08 (er_Flags)
 //
-parameter	AC_MEMORY_DEVICE			= 1'b1;
-parameter	AC_IO_DEVICE				= 1'b0;
-parameter	AC_NO_SHUTUP				= 1'b1;
-parameter	AC_SHUTUP					= 1'b0;
-parameter	AC_EXTENDED_SIZE			= 1'b1;
-parameter	AC_NORMAL_SIZE				= 1'b0;
+parameter	AC_MEMORY_DEVICE				= 1'b1;
+parameter	AC_IO_DEVICE					= 1'b0;
+parameter	AC_NO_SHUTUP					= 1'b1;
+parameter	AC_SHUTUP						= 1'b0;
+parameter	AC_EXTENDED_SIZE				= 1'b1;
+parameter	AC_NORMAL_SIZE					= 1'b0;
 parameter	AC_SUBSIZE_MATCH_PHYSICAL	= 4'b0000;
 parameter	AC_SUBSIZE_AUTOSIZED			= 4'b0001;
 parameter	AC_SUBSIZE_64K					= 4'b0010;
@@ -160,7 +166,8 @@ parameter	ER_TYPE = {
 									//AC_SYSTEM_POOL_LINK ,
 				
 									AC_NO_AUTOBOOT_ROM,
-									AC_NEXT_BOART_NOT_RELATED, 
+									//AC_NEXT_BOARD_NOT_RELATED, 
+									AC_NEXT_BOARD_RELATED,
 				
 									//AC_CONFSIZE_64K_32M
 									//AC_CONFSIZE_8M_16M
@@ -169,16 +176,30 @@ parameter	ER_TYPE = {
 				
 									};
 
+
+									
 parameter ER_TYPE_POOL_LINK = {	AC_PIC_TYPE_ZORROIII, AC_SYSTEM_POOL_LINK ,
 				
 									AC_NO_AUTOBOOT_ROM,
-									AC_NEXT_BOART_NOT_RELATED, 
+									//AC_NEXT_BOARD_NOT_RELATED, 
+									AC_NEXT_BOARD_RELATED, 
 				
 									AC_CONFSIZE_128K_64M
 };
 
+parameter	ER_TYPE_BOARD_01 = {
+									AC_PIC_TYPE_ZORROIII, 
+									AC_SYSTEM_POOL_NO_LINK,
+									AC_NO_AUTOBOOT_ROM,
+									AC_NEXT_BOARD_NOT_RELATED, 				
+									AC_CONFSIZE_64K_32M				
+									};
 
-parameter	ER_PRODUCT			= 8'h17;			// 004/104:		Product 0x17 (23 decimal)
+
+
+parameter	ER_PRODUCT				= 8'h17;			// 004/104:		Product 0x17 (23 decimal)
+
+parameter	ER_PRODUCT_BOARD_01	= 8'h17;			// 004/104:		Product 0x17 (23 decimal)
 
 
 parameter	ER_FLAGS			= {
@@ -198,6 +219,20 @@ parameter	ER_FLAGS			= {
 									
 									};
 
+parameter	ER_FLAGS_BOARD_01			= {
+									AC_IO_DEVICE,
+									AC_SHUTUP, 
+									AC_NORMAL_SIZE,
+									1'b1,
+									//AC_SUBSIZE_MATCH_PHYSICAL
+									//AC_SUBSIZE_AUTOSIZED
+									AC_SUBSIZE_64K
+									//AC_SUBSIZE_128K
+									//AC_SUBSIZE_256K
+									};
+
+									
+									
 parameter	ER_RESERVED03		= 8'b00000000;		// 00c/10c:		Reserved, must be 0
 
 parameter	ER_MANUFACTURER_HI	= 8'h13;			// 010/110:		Manufacturer number, high byte
@@ -209,61 +244,92 @@ reg wrote_to_44 = 1'b0;
 //
 // 
 //
-always @(posedge clk or negedge nIORST) begin
-	if (~nIORST)	
-		Status <= PIC_UNCONFIGURED;
-	else			
-		Status <= next;
-end
 	
 //
 //
 //
 always @(*) begin
 	next = 2'bx;
-	
+
 	case (Status)
 		PIC_UNCONFIGURED:		
-			if (wrote_to_44)	next <= PIC_CONFIGURED;
-			else				next <= PIC_UNCONFIGURED;
+			if (wrote_to_44)	
+				next <= PIC_CONFIGURED;
+			else				
+				next <= PIC_UNCONFIGURED;
 		
-		PIC_CONFIGURED:			next <= PIC_CONFIGURED;
+		PIC_CONFIGURED:			
+			next <= PIC_CONFIGURED;
 		
-		PIC_SHUTUP:				next <= PIC_SHUTUP;
+		PIC_SHUTUP:				
+			next <= PIC_SHUTUP;
 	endcase
 end
 
 //
 // Read from Autoconfig registers
 // 
-//always @(*) begin	
 always @(posedge clk) begin	
 	rdata = 4'bx;
 	
-	if (unconfigured)
-		case ({autocfg_reg, 2'b00})
-			9'h000: 	rdata = pool_link ? ER_TYPE_POOL_LINK [7:4] : ER_TYPE [7:4];
-			9'h100: 	rdata = pool_link ? ER_TYPE_POOL_LINK [3:0] : ER_TYPE [3:0];
+	//if (unconfigured) 
+		case (board [1:0])		
+			2'b00:	// ------- board 00 (memory) -------
+			case ({autocfg_reg, 2'b00})
+				9'h000: 	rdata = pool_link ? ER_TYPE_POOL_LINK [7:4] : ER_TYPE [7:4];
+				9'h100: 	rdata = pool_link ? ER_TYPE_POOL_LINK [3:0] : ER_TYPE [3:0];
 				
-			9'h004: 	rdata = ~(ER_PRODUCT [7:4]);
-			9'h104: 	rdata = ~(ER_PRODUCT [3:0]);
+				9'h004: 	rdata = ~(ER_PRODUCT [7:4]);
+				9'h104: 	rdata = ~(ER_PRODUCT [3:0]);
 				
-			9'h008: 	rdata = ~(ER_FLAGS [7:4]);
-			9'h108: 	rdata = ~(ER_FLAGS [3:0]);
+				9'h008: 	rdata = ~(ER_FLAGS [7:4]);
+				9'h108: 	rdata = ~(ER_FLAGS [3:0]);
 
-			9'h00c: 	rdata = ~(ER_RESERVED03 [7:4]);
-			9'h10c: 	rdata = ~(ER_RESERVED03 [3:0]);
+				9'h00c: 	rdata = ~(ER_RESERVED03 [7:4]);
+				9'h10c: 	rdata = ~(ER_RESERVED03 [3:0]);
 
-			9'h010: 	rdata = ~(ER_MANUFACTURER_HI [7:4]);
-			9'h110: 	rdata = ~(ER_MANUFACTURER_HI [3:0]);
+				9'h010: 	rdata = ~(ER_MANUFACTURER_HI [7:4]);
+				9'h110: 	rdata = ~(ER_MANUFACTURER_HI [3:0]);
 					
-			9'h014: 	rdata = ~(ER_MANUFACTURER_LO [7:4]);
-			9'h114: 	rdata = ~(ER_MANUFACTURER_LO [3:0]);					
+				9'h014: 	rdata = ~(ER_MANUFACTURER_LO [7:4]);
+				9'h114: 	rdata = ~(ER_MANUFACTURER_LO [3:0]);					
 					
-			default: 	rdata = 4'b1111;					
-	endcase
-	else
-				rdata = 4'b1111;
+				default: 	rdata = 4'b1111;					
+			endcase
+			
+			2'b01: 	// ------- board 01 (I/O) -------
+			case ({autocfg_reg, 2'b00})
+				9'h000: 	rdata = ER_TYPE_BOARD_01 [7:4];
+				9'h100: 	rdata = ER_TYPE_BOARD_01 [3:0];
+				
+				9'h004: 	rdata = ~(ER_PRODUCT_BOARD_01 [7:4]);
+				9'h104: 	rdata = ~(ER_PRODUCT_BOARD_01 [3:0]);
+				
+				9'h008: 	rdata = ~(ER_FLAGS_BOARD_01 [7:4]);
+				9'h108: 	rdata = ~(ER_FLAGS_BOARD_01 [3:0]);
+
+				9'h00c: 	rdata = ~(ER_RESERVED03 [7:4]);
+				9'h10c: 	rdata = ~(ER_RESERVED03 [3:0]);
+
+				9'h010: 	rdata = ~(ER_MANUFACTURER_HI [7:4]);
+				9'h110: 	rdata = ~(ER_MANUFACTURER_HI [3:0]);
+					
+				9'h014: 	rdata = ~(ER_MANUFACTURER_LO [7:4]);
+				9'h114: 	rdata = ~(ER_MANUFACTURER_LO [3:0]);					
+					
+				default: 	rdata = 4'b1111;					
+			endcase
+				
+			
+			//2'b10: 	// ------- board 10 (reserved) -------
+			//	;
+			
+			//2'b11: 	// ------- board 11 (reserved) -------
+			//	;
+			default: 	rdata = 4'b1111;								
+		endcase
+//	else
+//		rdata = 4'b1111;
 end
 
 //
@@ -274,23 +340,62 @@ always @(posedge clk or negedge nIORST) begin
 	if (~nIORST) begin
 		ec_Z3_HighByte [7:0] <= 8'h77;
 		ec_BaseAddress [7:0] <= 8'h77;
-		wrote_to_44 <= 1'b0;
+
+		ec_Z3_HighByte_board_01 [7:0] <= 8'h77;
+		ec_BaseAddress_board_01 [7:0] <= 8'h77;
+
+		wrote_to_44 <= 1'b0;		
+
+		Status <= PIC_UNCONFIGURED;
+	
+		board [1:0] <= 2'b00;
 	end
 	
-	else
+	else begin
 	
-	if (en & ~READ & zs_writedata & unconfigured) begin	
-		casex ({autocfg_reg, 2'b00})
-			9'hX44: begin
-						ec_Z3_HighByte [7:0] <= wdata [15:8];			// 44, word access, address bits A31..A24. Actual configuration
-						if (~nDS [2])
-							ec_BaseAddress [7:0] <= wdata [7:0];	
-						wrote_to_44 <= 1'b1;
+		Status <= next;
+	
+	
+		if (en & ~READ & zs_writedata) begin	
+	
+		case (board [1:0])
+			2'b00:
+			casex ({autocfg_reg, 2'b00})
+				9'hX44: begin
+							ec_Z3_HighByte [7:0] <= wdata [15:8];			// 44, word access, address bits A31..A24. Actual configuration
+							if (~nDS [2])
+								ec_BaseAddress [7:0] <= wdata [7:0];	
+							wrote_to_44 <= 1'b1;
+						
+							board [1:0] <= board [1:0] + 2'b01;
+							
+							Status <= PIC_UNCONFIGURED;	
+						
 					end
 			
 			9'hX48: 	ec_BaseAddress <= wdata [7:0];					// 48, byte access, address bits A23..A16
+			endcase
+		
+		2'b01:
+			casex ({autocfg_reg, 2'b00})
+				9'hX44: begin
+							ec_Z3_HighByte_board_01 [7:0] <= wdata [15:8];			// 44, word access, address bits A31..A24. Actual configuration
+							if (~nDS [2])
+								ec_BaseAddress_board_01 [7:0] <= wdata [7:0];	
+							wrote_to_44 <= 1'b1;
+						
+							board [1:0] <= board [1:0] + 2'b01;
+						
+					end
+			
+			9'hX48: 	ec_BaseAddress_board_01 <= wdata [7:0];					// 48, byte access, address bits A23..A16
 		endcase
-	end				
+		
+
+		
+		endcase
+		end				
+	end
 end
 
 

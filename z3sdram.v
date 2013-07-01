@@ -38,6 +38,7 @@ input	clk;
 input			CLK0;
 output	[2:0]	LED;
 input	[8:2]	GPIO;
+//output	[8:2]	GPIO;
 
 
 
@@ -362,7 +363,7 @@ reg trigger;		// GPIO [8] triggers SignalTap with CPU /BERR
 wire gpio8 = GPIO [8];
 
 
-assign red_led = trigger;
+//assign red_led = trigger;
 
 
 always @(negedge nBERR or negedge nIORST) begin
@@ -411,10 +412,11 @@ reg [1:0] FC_r;
 //
 
 wire [31:16] CardBaseAddr;
+wire [31:16] CardBaseAddr_board_01;
 wire [7:4] cfg_rdata;
 wire unconfigured, configured, shutup;
 
-wire cardspace_match 	= (AD [31:26] == CardBaseAddr [31:26]) /* & ~nFCS_r */;
+wire cardspace_match 	= (AD [31:26] == CardBaseAddr [31:26]) | (AD [31:26] == CardBaseAddr_board_01 [31:26]);
 wire cfgspace_match		= (AD [31:16] == 16'hFF00) /* & ~nFCS_r */;
 wire match					= (cardspace_match_r | cfgspace_match_r) & (FC_r [0] ^ FC_r [1]) & ~nFCS;
 
@@ -733,7 +735,7 @@ assign nMTACK = 1'bZ;
 Autoconfig _Autoconfig (
 	.clk (clk),
 		
-	.zs_match (zs_match),
+	//.zs_match (zs_match),
 	.zs_writedata (zs_writedata),
 	.nIORST (nIORST), .nCFGINN (nCFGINN), .nCFGOUTN (nCFGOUTN), 
 	
@@ -746,6 +748,11 @@ Autoconfig _Autoconfig (
 	
 	.ec_Z3_HighByte (CardBaseAddr [31:24]), 
 	.ec_BaseAddress (CardBaseAddr [23:16]),
+
+	.ec_Z3_HighByte_board_01 (CardBaseAddr_board_01 [31:24]), 
+	.ec_BaseAddress_board_01 (CardBaseAddr_board_01 [23:16]),
+
+
 	
 	.unconfigured (unconfigured), 
 	.configured (configured),
