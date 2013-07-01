@@ -404,6 +404,8 @@ reg DOE_r;
 reg [3:0] nDS_r;
 reg [3:0] _nDS_r;
 
+reg [1:0] FC_r;
+
 
 // Lock address always in the beginning of FCS
 //
@@ -414,10 +416,11 @@ wire unconfigured, configured, shutup;
 
 wire cardspace_match 	= (AD [31:26] == CardBaseAddr [31:26]) /* & ~nFCS_r */;
 wire cfgspace_match		= (AD [31:16] == 16'hFF00) /* & ~nFCS_r */;
-wire match					= (cardspace_match_r | cfgspace_match_r) & (FC [0] ^ FC [1]) & ~nFCS;
+wire match					= (cardspace_match_r | cfgspace_match_r) & (FC_r [0] ^ FC_r [1]) & ~nFCS;
 
 always @(negedge nFCS) begin
 	addr [31:0] <= {AD [31:8], A [7:2], 2'b0};
+	FC_r [1:0] <= FC [1:0];
 	cardspace_match_r <= cardspace_match;
 	cfgspace_match_r <= cfgspace_match;
 end
@@ -676,7 +679,7 @@ wire zs_dtack = (ZorroState == ZS_DTACK);
 //assign nSLAVEN = nFCS | ~match_r;
 //assign nSLAVEN = nFCS | zs_idle_r;			// nSLAVEN driven from Zorro state machine, and qualified by nFCS
 //assign nSLAVEN = nFCS | ~match_r;
-assign nSLAVEN = nFCS | ~(cardspace_match_r | cfgspace_match_r) | ~(FC [0] ^ FC [1]) | nCFGINN;
+assign nSLAVEN = nFCS | ~(cardspace_match_r | cfgspace_match_r) | ~(FC_r [0] ^ FC_r [1]) | nCFGINN;
 
 
 	
