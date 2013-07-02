@@ -416,7 +416,9 @@ wire [31:16] CardBaseAddr_board_01;
 wire [7:4] cfg_rdata;
 wire unconfigured, configured, shutup;
 
-wire cardspace_match 	= (AD [31:26] == CardBaseAddr [31:26]) | (AD [31:26] == CardBaseAddr_board_01 [31:26]);
+wire board_00_match 		= (AD [31:26] == CardBaseAddr [31:26]);
+wire board_01_match 		= (AD [31:26] == CardBaseAddr_board_01 [31:26]);
+wire cardspace_match 	= board_00_match | board_01_match;
 wire cfgspace_match		= (AD [31:16] == 16'hFF00) /* & ~nFCS_r */;
 wire match					= (cardspace_match_r | cfgspace_match_r) & (FC_r [0] ^ FC_r [1]) & ~nFCS;
 
@@ -425,6 +427,8 @@ always @(negedge nFCS) begin
 	FC_r [1:0] <= FC [1:0];
 	cardspace_match_r <= cardspace_match;
 	cfgspace_match_r <= cfgspace_match;
+	board_00_match_r <= board_00_match;
+	board_01_match_r <= board_01_match;
 end
 
 
@@ -436,6 +440,8 @@ reg ack_o_r;
 reg match_r;
 reg cardspace_match_r;
 reg cfgspace_match_r;
+reg board_00_match_r;
+reg board_01_match_r;
 
 always @(posedge clk) begin	
 
@@ -484,13 +490,9 @@ end
 always @(*) begin
 	next = 4'bx;		// ???
 	
-	if (nFCS | ~nIORST)		// TODO keep an eye at /BERR also
-	begin
+	if (nFCS | ~nIORST)
 		next = ZS_IDLE;
-	end
 	else
-	
-	
 	
 	case (ZorroState)
 		ZS_IDLE:
@@ -509,53 +511,64 @@ always @(*) begin
 		
 		ZS_DATA_PHASE:	
 			if (READ)	
-								if (cfgspace_match_r | ack_o_r)	
-									next = ZS_DTACK3;						// delay DTACK
-								else							
-									next = ZS_DATA_PHASE;					
+				if (cfgspace_match_r | ack_o_r)	
+					next = ZS_DTACK3;						// delay DTACK
+				else							
+					next = ZS_DATA_PHASE;					
 			else // ---- WRITE ----
-								begin
-									if ((nDS_r [3:0] == 4'b1111))	
-										next = ZS_DATA_PHASE;			// TODO need a better way to detect nDS assertion
-									else 
-										begin
-											data [31:0] = {AD [31:24], SD [7:0], AD [23:8]};
-											next = ZS_WRITE_DATA_STB;
-										end
-								end
+				begin
+					if ((nDS_r [3:0] == 4'b1111))	
+						next = ZS_DATA_PHASE;			// TODO need a better way to detect nDS assertion
+					else 
+						begin
+							data [31:0] = {AD [31:24], SD [7:0], AD [23:8]};
+							next = ZS_WRITE_DATA_STB;
+						end
+				end
 		
-		ZS_WRITE_DATA_STB:									//next = ZS_WRITE_DATA_STB1;
-															next = ZS_WRITE_DATA;
+		ZS_WRITE_DATA_STB:									
+			next = ZS_WRITE_DATA;
 									
-		//ZS_WRITE_DATA_STB1:									next = ZS_WRITE_DATA;
 		
-		ZS_WRITE_DATA:	if (cfgspace_match_r | ack_o_r)		next = ZS_DTACK;							
-															//next = ZS_DTACK0;
-						else								next = ZS_WRITE_DATA;						
+		ZS_WRITE_DATA:	
+			if (cfgspace_match_r | board_01_match_r | ack_o_r)
+				next = ZS_DTACK;							
+				//next = ZS_DTACK0;
+			else								
+				next = ZS_WRITE_DATA;						
 								
 	//	ZS_FAST_READ:	next = ZS_WAIT_ACK;
 		
-		ZS_WAIT_ACK:	if (ack_o_r)						next = ZS_DTACK0;
-						else 								next = ZS_WAIT_ACK;						
+		ZS_WAIT_ACK:	
+			if (ack_o_r)						
+				next = ZS_DTACK0;
+			else 			
+				next = ZS_WAIT_ACK;						
 		
-		ZS_DTACK0:											next = ZS_DTACK1;
-															//next = ZS_DTACK;
+		ZS_DTACK0:											
+			next = ZS_DTACK1;
+			//next = ZS_DTACK;
 		
-		ZS_DTACK1:										next = ZS_DTACK2;
+		ZS_DTACK1:										
+			next = ZS_DTACK2;
 		
-		ZS_DTACK2:										next = ZS_DTACK3;
+		ZS_DTACK2:
+			next = ZS_DTACK3;
 		
-		ZS_DTACK3:										next = ZS_DTACK4;
+		ZS_DTACK3:	
+			next = ZS_DTACK4;
 		
-		ZS_DTACK4:										next = ZS_DTACK;
-		
-		
-		
+		ZS_DTACK4:			
+			next = ZS_DTACK;
+
 		ZS_DTACK: 											
-					if (cntr_us [10:0] == DTACK_TIMEOUT)	next = ZS_DTACK_ERR;
-					else									next = ZS_DTACK;
+			if (cntr_us [10:0] == DTACK_TIMEOUT)	
+				next = ZS_DTACK_ERR;
+			else									
+				next = ZS_DTACK;
 						
-		ZS_DTACK_ERR:										next = ZS_DTACK_ERR;
+		ZS_DTACK_ERR:
+			next = ZS_DTACK_ERR;
 
 	endcase
 end
@@ -567,50 +580,28 @@ end
 // data_o
 //
 always @(posedge clk or negedge nIORST) begin
-	if (~nIORST) begin
-		data_o [31:0] <= 32'b0;
-	end
-	else
-	case (ZorroState)
-		ZS_DATA_PHASE: 
-			begin
-				if (cfgspace_match_r)	
-					data_o [31:0] <= {cfg_rdata [7:4], 28'hFFFFFFF};
-				else														
-				if (ack_o_r)		
-					data_o [31:0] <= dat_o [31:0];
-			end
-		
-		ZS_WAIT_ACK:				
-			data_o [31:0] <= dat_o [31:0];
-	endcase	
-end
-
-
-//
-// === 4 ===
-//
-// stb
-//
-/*
-always @(posedge clk or negedge nIORST) begin
 	if (~nIORST)
-		stb <= 1'b0;	
+		data_o [31:0] <= 32'b0;
 	else
 		case (ZorroState)
-			ZS_MATCH_PHASE:		
-				if (cardspace_match_r & READ)		
-					stb <= 1'b1;
-			ZS_WRITE_DATA_STB:	
-				if (cardspace_match_r) 				
-					stb <= 1'b1;
-			default:										
-				stb <= 1'b0;
-		endcase
+			ZS_DATA_PHASE: 
+				begin
+					if (cfgspace_match_r)	
+						data_o [31:0] <= {cfg_rdata [7:4], 28'hFFFFFFF};
+					else														
+					if (ack_o_r)		
+						data_o [31:0] <= dat_o [31:0];
+				end
+		
+			ZS_WAIT_ACK:				
+				data_o [31:0] <= dat_o [31:0];
+		endcase	
 end
-*/
 
-wire stb = READ ? zs_match : zs_write_data_stb;
+
+
+
+wire stb = (READ ? zs_match : zs_write_data_stb) & board_00_match_r;
 
 
 
