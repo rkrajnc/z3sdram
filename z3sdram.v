@@ -511,7 +511,7 @@ always @(*) begin
 		
 		ZS_DATA_PHASE:	
 			if (READ)	
-				if (cfgspace_match_r | ack_o_r)	
+				if (cfgspace_match_r | board_01_match_r | ack_o_r)
 					next = ZS_DTACK3;						// delay DTACK
 				else							
 					next = ZS_DATA_PHASE;					
