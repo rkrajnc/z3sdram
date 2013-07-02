@@ -763,6 +763,8 @@ Autoconfig _Autoconfig (
 
 leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured), .shutup (shutup), .red_led (~red_led), .LED (LED [2:0]));
 
+board_01 board_01_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .addr (addr [15:0]), .di (data [31:0]), .do (), .read (READ), .stb (zs_write_data_stb), .red_led (red_led));
+
 
 
 sdram_controller sdram_controller_i (
