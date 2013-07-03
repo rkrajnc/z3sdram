@@ -160,32 +160,24 @@ parameter	AC_SUBSIZE_256K				= 4'b0100;
 
 
 parameter	ER_TYPE = {
-									AC_PIC_TYPE_ZORROIII, 
-				
-									AC_SYSTEM_POOL_NO_LINK,
-									//AC_SYSTEM_POOL_LINK ,
-				
-									AC_NO_AUTOBOOT_ROM,
-									//AC_NEXT_BOARD_NOT_RELATED, 
-									AC_NEXT_BOARD_RELATED,
-				
+									AC_PIC_TYPE_ZORROIII, 				
+									AC_SYSTEM_POOL_NO_LINK,													
+									AC_NO_AUTOBOOT_ROM,									
+									AC_NEXT_BOARD_RELATED,				
 									//AC_CONFSIZE_64K_32M
 									//AC_CONFSIZE_8M_16M
 									AC_CONFSIZE_128K_64M
 									//AC_CONFSIZE_256K_128M
-				
 									};
 
 
 									
-parameter ER_TYPE_POOL_LINK = {	AC_PIC_TYPE_ZORROIII, AC_SYSTEM_POOL_LINK ,
-				
+parameter ER_TYPE_POOL_LINK = {	AC_PIC_TYPE_ZORROIII, 
+									AC_SYSTEM_POOL_LINK ,				
 									AC_NO_AUTOBOOT_ROM,
-									//AC_NEXT_BOARD_NOT_RELATED, 
 									AC_NEXT_BOARD_RELATED, 
-				
 									AC_CONFSIZE_128K_64M
-};
+									};
 
 parameter	ER_TYPE_BOARD_01 = {
 									AC_PIC_TYPE_ZORROIII, 
@@ -205,12 +197,9 @@ parameter	ER_PRODUCT_BOARD_01	= 8'h17;			// 004/104:		Product 0x17 (23 decimal)
 parameter	ER_FLAGS			= {
 									AC_MEMORY_DEVICE,
 									AC_SHUTUP, 
-									
 									//AC_NORMAL_SIZE,
 									AC_EXTENDED_SIZE,
-									
 									1'b1,
-							
 									AC_SUBSIZE_MATCH_PHYSICAL
 									//AC_SUBSIZE_AUTOSIZED
 									//AC_SUBSIZE_64K

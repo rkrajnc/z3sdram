@@ -37,8 +37,7 @@ input	clk;
 `endif
 input			CLK0;
 output	[2:0]	LED;
-input	[8:2]	GPIO;
-//output	[8:2]	GPIO;
+inout		[8:2]	GPIO;
 
 
 
@@ -753,7 +752,7 @@ Autoconfig _Autoconfig (
 	.nDS (nDS_r [3:0]),
 	
 	
-	.pool_link (GPIO [2])
+	.pool_link (1'b1 /* GPIO [2] */)
 	
 	);
 
@@ -765,6 +764,7 @@ leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured),
 
 board_01 board_01_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .addr (addr [15:0]), .di (data [31:0]), .do (), .read (READ), .stb (zs_write_data_stb), .red_led (red_led));
 
+isa isa_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .read (READ), .stb (zs_match), .nIOR (GPIO [7]), .nIOW (GPIO [8]));
 
 
 sdram_controller sdram_controller_i (
