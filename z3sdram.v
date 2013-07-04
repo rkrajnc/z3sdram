@@ -510,7 +510,7 @@ always @(*) begin
 		
 		ZS_DATA_PHASE:	
 			if (READ)	
-				if (cfgspace_match_r | board_01_match_r | ack_o_r)
+				if (cfgspace_match_r | ack_o_r | cs8900_ack)
 					next = ZS_DTACK3;						// delay DTACK
 				else							
 					next = ZS_DATA_PHASE;					
@@ -530,7 +530,7 @@ always @(*) begin
 									
 		
 		ZS_WRITE_DATA:	
-			if (cfgspace_match_r | board_01_match_r | ack_o_r)
+			if (cfgspace_match_r | ack_o_r | cs8900_ack)		// | cs8900_ack
 				next = ZS_DTACK;							
 				//next = ZS_DTACK0;
 			else								
@@ -765,22 +765,31 @@ leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured),
 board_01 board_01_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .addr (addr [15:0]), .di (data [31:0]), .do (), .read (READ), .stb (zs_write_data_stb), .red_led (red_led));
 
 wire nIOR, nIOW, RST;
-assign GPIO [2] = nIOR;
-assign GPIO [3] = nIOW;
+assign GPIO [2] = nIOR | nFCS;
+assign GPIO [3] = nIOW | nFCS;
 assign GPIO [4] = ~nIORST;
 //assign GPIO [8:5] = {addr [3:2], 2'b00};
 
-isa isa_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .read (READ), .stb (zs_data_phase), .nIOR (nIOR), .nIOW (nIOW));
+isa isa_i (
+	.clk (clk), 
+	.reset (~nIORST), 
+	.en (board_01_match_r & (zs_data_phase | zs_dtack)), 
+	.read (READ), 
+	.nIOR (nIOR), 
+	.nIOW (nIOW)
+);
+
+
+wire cs8900_ack;
 
 cs8900a_8bit cs8900a_8bit_i (
 	.clk (clk), 
 	.reset (~nIORST), 
-	.en (board_01_match_r), 
+	.stb (board_01_match_r & zs_data_phase),
 	.addr_i (addr [3:2]),
 	.nDS (nDS_r [3:0]), 
 	.addr_o (GPIO [8:5]),
-	.nIOR (nIOR), 
-	.nIOW (nIOW)
+	.cs8900_ack (cs8900_ack)
 );
 	
 	
