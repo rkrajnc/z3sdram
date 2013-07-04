@@ -704,10 +704,10 @@ ALT_OUTBUF_TRI ndtack (.i (nFCS | ~zs_dtack | nSLAVEN), .oe (~_nFCS_r), .o (nDTA
 //wire dboe = ~nFCS & (zs_data_phase | zs_dtack) & READ & nBERR;
 
 // --- Prometheus
-wire dboe = ~nSLAVEN & DOE & READ & nBERR;
+wire dboe = ~nSLAVEN & DOE & READ & nBERR & (board_00_match_r | cfgspace_match_r);
 
 
-assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;
+assign {AD [31:24], SD [7:0], AD [23:8]} = dboe ? data_o [31:0] : 32'bZ;	// (board_00_match | cfgspace_match)
 //OPNDRN opndrn_ad (.in (dboe ? data_o [31:0] : 32'hFFFFFFFF), .out ({AD [31:24], SD [7:0], AD [23:8]}));
 
 //
@@ -764,8 +764,14 @@ leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured),
 
 board_01 board_01_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .addr (addr [15:0]), .di (data [31:0]), .do (), .read (READ), .stb (zs_write_data_stb), .red_led (red_led));
 
-isa isa_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .read (READ), .stb (zs_match), .nIOR (GPIO [7]), .nIOW (GPIO [8]));
+wire nIOR, nIOW, RST;
+assign GPIO [2] = nIOR;
+assign GPIO [3] = nIOW;
+assign GPIO [4] = ~nIORST;
 
+isa isa_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .read (READ), .stb (zs_match), .nIOR (nIOR), .nIOW (nIOW));
+
+cs8900a_8bit cs8900a_8bit_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .addr ({addr [1:0], nDS_r [1:0]}), .nIOR (nIOR), .nIOW (nIOW));
 
 sdram_controller sdram_controller_i (
 	.clk_i (clk133), 	

@@ -191,7 +191,7 @@ parameter	ER_TYPE_BOARD_01 = {
 
 parameter	ER_PRODUCT				= 8'h17;			// 004/104:		Product 0x17 (23 decimal)
 
-parameter	ER_PRODUCT_BOARD_01	= 8'h17;			// 004/104:		Product 0x17 (23 decimal)
+parameter	ER_PRODUCT_BOARD_01	= 8'h18;			
 
 
 parameter	ER_FLAGS			= {
