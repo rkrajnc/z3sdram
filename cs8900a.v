@@ -22,26 +22,26 @@ assign subaddr [1:0] = nDS [3] ? (nDS [2] ? (nDS [1] ? 2'b11 : 2'b10) : 2'b01) :
 assign addr_o [3:0] = {addr_i [1:0], subaddr [1:0]};
 
 // IORW low to SD valid is max 135ns, need to delay rdy
-parameter TIOR3 = 4'd14;
-reg [3:0] ticks;
+parameter TIOR3 = 5'd15; //4'd14;
+reg [4:0] ticks;
 
 always @(posedge clk) begin
 	if (reset) begin
 		cs8900_ack <= 1'b0;
-		ticks [3:0] <= 4'b0;
+		ticks [4:0] <= 5'b0;
 	end
 	else begin
 	
 		if (stb) begin
-			if (ticks [3:0] != TIOR3) begin
-				ticks [3:0] <= ticks [3:0] + 4'b1;
+			if (ticks [4:0] != TIOR3) begin
+				ticks [4:0] <= ticks [4:0] + 5'b1;
 				cs8900_ack <= 1'b0;
 			end
 			else
 				cs8900_ack <= 1'b1;
 		end
 		else begin
-			ticks [3:0] <= 4'b0;
+			ticks [4:0] <= 5'b0;
 			cs8900_ack <= 1'b0;
 		end
 	

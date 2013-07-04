@@ -37,7 +37,7 @@ input	clk;
 `endif
 input			CLK0;
 output	[2:0]	LED;
-inout		[8:2]	GPIO;
+output	[8:2]	GPIO;
 
 
 
