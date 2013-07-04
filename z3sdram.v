@@ -768,10 +768,22 @@ wire nIOR, nIOW, RST;
 assign GPIO [2] = nIOR;
 assign GPIO [3] = nIOW;
 assign GPIO [4] = ~nIORST;
+//assign GPIO [8:5] = {addr [3:2], 2'b00};
 
-isa isa_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .read (READ), .stb (zs_match), .nIOR (nIOR), .nIOW (nIOW));
+isa isa_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .read (READ), .stb (zs_data_phase), .nIOR (nIOR), .nIOW (nIOW));
 
-cs8900a_8bit cs8900a_8bit_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .addr ({addr [1:0], nDS_r [1:0]}), .nIOR (nIOR), .nIOW (nIOW));
+cs8900a_8bit cs8900a_8bit_i (
+	.clk (clk), 
+	.reset (~nIORST), 
+	.en (board_01_match_r), 
+	.addr_i (addr [3:2]),
+	.nDS (nDS_r [3:0]), 
+	.addr_o (GPIO [8:5]),
+	.nIOR (nIOR), 
+	.nIOW (nIOW)
+);
+	
+	
 
 sdram_controller sdram_controller_i (
 	.clk_i (clk133), 	
