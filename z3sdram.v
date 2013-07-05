@@ -402,7 +402,7 @@ reg nFCS_r;
 reg _nFCS_r;			// nFCS_r delayed by 1 clock, to delay tristating of DTACK
 reg DOE_r;
 reg [3:0] nDS_r;
-reg [3:0] _nDS_r;
+//reg [3:0] _nDS_r;
 
 reg [1:0] FC_r;
 
@@ -449,8 +449,8 @@ always @(posedge clk) begin
 	
 		DOE_r <= DOE;	
 	
-		_nDS_r [3:0] <= nDS [3:0];
-		nDS_r [3:0] <= _nDS_r [3:0];
+		//_nDS_r [3:0] <= nDS [3:0];
+		nDS_r [3:0] <= nDS [3:0]; 	//_nDS_r [3:0];
 	
 		
 		//match_r <= ~nFCS_r & _match_r;
@@ -775,6 +775,7 @@ isa isa_i (
 	.reset (~nIORST), 
 	.en (board_01_match_r & (zs_data_phase | zs_dtack)), 
 	.read (READ), 
+	.nSLAVEN (nSLAVEN),
 	.nIOR (nIOR), 
 	.nIOW (nIOW)
 );
@@ -787,7 +788,7 @@ cs8900a_8bit cs8900a_8bit_i (
 	.reset (~nIORST), 
 	.stb (board_01_match_r & zs_data_phase),
 	.addr_i (addr [3:2]),
-	.nDS (nDS_r [3:0]), 
+	.nDS (nDS [3:0]), 
 	.addr_o (GPIO [8:5]),
 	.cs8900_ack (cs8900_ack)
 );
