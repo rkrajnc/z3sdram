@@ -3,6 +3,7 @@ module isa (
 	reset,
 	en,	
 	read,
+	nSLAVEN,
 	
 	nIOR,
 	nIOW
@@ -13,19 +14,26 @@ input reset;
 
 input en;
 input read;
+input nSLAVEN;
 
 
-output reg nIOR;
-output reg nIOW;
+output nIOR;
+output nIOW;
+
+reg nior_r;
+reg niow_r;
+
+assign nIOR = nior_r | nSLAVEN;
+assign nIOW = niow_r | nSLAVEN;
 
 always @(posedge clk) begin
 	if (reset)
-		{nIOR, nIOW} <= 2'b11;
+		{nior_r, niow_r} <= 2'b11;
 	else
 		if (en)
-			{nIOR, nIOW} <= read ? 2'b01 : 2'b10;
+			{nior_r, niow_r} <= read ? 2'b01 : 2'b10;
 		else
-			{nIOR, nIOW} <= 2'b11;
+			{nior_r, niow_r} <= 2'b11;
 end
 
 endmodule
