@@ -1,12 +1,11 @@
 module cs8900a_8bit (
-	clk, reset, stb, nIOR, nIOW, addr_i, nDS, addr_o, cs8900_ack
+	clk, reset, stb, addr_i, nDS, addr_o, cs8900_ack
 );
 
 input clk;
 input reset;
 input stb;
-input nIOR;
-input nIOW;
+
 input [3:0] nDS;
 input [1:0] addr_i;
 output [3:0] addr_o;
@@ -22,7 +21,7 @@ assign subaddr [1:0] = nDS [3] ? (nDS [2] ? (nDS [1] ? 2'b11 : 2'b10) : 2'b01) :
 assign addr_o [3:0] = {addr_i [1:0], subaddr [1:0]};
 
 // IORW low to SD valid is max 135ns, need to delay rdy
-parameter TIOR3 = 5'd15; //4'd14;
+parameter TIOR3 = 5'd20; //4'd14;
 reg [4:0] ticks;
 
 always @(posedge clk) begin

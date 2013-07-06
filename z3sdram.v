@@ -765,17 +765,18 @@ leds leds_i (.clk (clk), .unconfigured (unconfigured), .configured (configured),
 board_01 board_01_i (.clk (clk), .reset (~nIORST), .en (board_01_match_r), .addr (addr [15:0]), .di (data [31:0]), .do (), .read (READ), .stb (zs_write_data_stb), .red_led (red_led));
 
 wire nIOR, nIOW, RST;
-assign GPIO [2] = nIOR | nFCS;
-assign GPIO [3] = nIOW | nFCS;
+assign GPIO [2] = nIOR;
+assign GPIO [3] = /* ~(~READ & (board_01_match_r & zs_data_phase)) | nFCS; */	nIOW;
 assign GPIO [4] = ~nIORST;
-//assign GPIO [8:5] = {addr [3:2], 2'b00};
+
 
 isa isa_i (
 	.clk (clk), 
 	.reset (~nIORST), 
-	.en (board_01_match_r & (zs_data_phase | zs_dtack)), 
+	.en (board_01_match_r & (READ ? (zs_data_phase | zs_dtack) : zs_data_phase)), 
 	.read (READ), 
 	.nSLAVEN (nSLAVEN),
+
 	.nIOR (nIOR), 
 	.nIOW (nIOW)
 );
@@ -789,6 +790,7 @@ cs8900a_8bit cs8900a_8bit_i (
 	.stb (board_01_match_r & zs_data_phase),
 	.addr_i (addr [3:2]),
 	.nDS (nDS [3:0]), 
+
 	.addr_o (GPIO [8:5]),
 	.cs8900_ack (cs8900_ack)
 );
