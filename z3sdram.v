@@ -405,6 +405,7 @@ reg [3:0] nDS_r;
 //reg [3:0] _nDS_r;
 
 reg [1:0] FC_r;
+reg READ_r;
 
 
 // Lock address always in the beginning of FCS
@@ -424,6 +425,7 @@ wire match					= (cardspace_match_r | cfgspace_match_r) & (FC_r [0] ^ FC_r [1]) 
 always @(negedge nFCS) begin
 	addr [31:0] <= {AD [31:8], A [7:2], 2'b0};
 	FC_r [1:0] <= FC [1:0];
+	READ_r <= READ;
 	cardspace_match_r <= cardspace_match;
 	cfgspace_match_r <= cfgspace_match;
 	board_00_match_r <= board_00_match;
@@ -774,7 +776,7 @@ isa isa_i (
 	.clk (clk), 
 	.reset (~nIORST), 
 	.en (board_01_match_r & (READ ? (zs_data_phase | zs_dtack) : zs_data_phase)), 
-	.read (READ), 
+	.read (READ_r),
 	.nSLAVEN (nSLAVEN),
 
 	.nIOR (nIOR), 
@@ -789,8 +791,11 @@ cs8900a_8bit cs8900a_8bit_i (
 	.reset (~nIORST), 
 	.stb (board_01_match_r & zs_data_phase),
 	.addr_i (addr [3:2]),
-	.nDS (nDS [3:0]), 
+	.nDS (nDS_r [3:0]), 
 
+	.ior (nIOR),
+	.iow (nIOW),
+	
 	.addr_o (GPIO [8:5]),
 	.cs8900_ack (cs8900_ack)
 );
